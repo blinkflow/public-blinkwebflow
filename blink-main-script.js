@@ -141,7 +141,7 @@ class GlobalBlink {
     }
 
     async addToCart({ variantId, quantity = 1 }) {
-        if (!this.cartId) {
+        if (!this._cart) {
             const cart = await this._createCart(variantId, quantity);
             this.cartId = cart.id;
             this._cart = await this._fetchCart(this.cartId);
@@ -195,7 +195,7 @@ class GlobalBlink {
                     "Failed to create cart: " + response.userErrors[0].message
                 );
             }
-            return response.data.cartCreate.cart;
+            return response.data.cartCreate
         } catch (error) {
             console.error("[Blink] Error creating cart:", error);
         }
@@ -230,7 +230,7 @@ class GlobalBlink {
                     res.data.cartLinesAdd.userErrors[0].message
             );
         }
-        return res.data.cartLinesAdd.cart;
+        return res.data.cartLinesAdd
     }
 
     async _fetchCart(cartId) {
