@@ -1,4 +1,4 @@
-class Blink {
+class GlobalBlink {
     constructor(config = {}) {
         this.shopify = null;
         this._cartIdStorageKey = "blink_cart_id";
@@ -280,5 +280,5 @@ class Blink {
 }
 
 document.addEventListener("DOMContentLoaded", function () {
-    window.Blink = new Blink();
+    window.Blink = new GlobalBlink();
 });
