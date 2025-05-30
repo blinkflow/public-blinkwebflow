@@ -166,6 +166,9 @@ class GlobalBlink {
             const query = `
             mutation cartCreate($input: CartInput!) {
                 cartCreate(input: $input) {
+                 cart {
+                    id
+                }
                 userErrors {
                     field
                     message
@@ -195,7 +198,7 @@ class GlobalBlink {
                     "Failed to create cart: " + response.userErrors[0].message
                 );
             }
-            return response.data.cartCreate
+            return response.data.cartCreate.cart
         } catch (error) {
             console.error("[Blink] Error creating cart:", error);
         }
@@ -205,6 +208,9 @@ class GlobalBlink {
         const query = `
             mutation cartLinesAdd($cartId: ID!, $lines: [CartLineInput!]!) {
                 cartLinesAdd(cartId: $cartId, lines: $lines) {
+                cart {
+                    id
+                }
                 userErrors {
                     field
                     message
@@ -230,7 +236,7 @@ class GlobalBlink {
                     res.data.cartLinesAdd.userErrors[0].message
             );
         }
-        return res.data.cartLinesAdd
+        return res.data.cartLinesAdd.cart
     }
 
     async _fetchCart(cartId) {
