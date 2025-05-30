@@ -1,23 +1,30 @@
 class GlobalBlink {
     constructor(config = {}) {
         this.shopify = null;
-        this._cartIdStorageKey = "blink_cart_id";
-        this._init(config);
-        this.cartId = this._loadCartIdFromStorage();
+        this._cartStorageKey = "blink_cart";
         this._cart = null;
+        this._init(config);
     }
 
     async _init(config) {
         this._initShopify(config);
-
-        if (this.cartId) {
-            try {
-                const cart = await this._fetchCart(this.cartId);
-                this._cart = cart;
-            } catch (err) {
-                console.warn("[Blink] Invalid or expired cart, resetting...");
-                this._clearCart();
+        if (!this.shopify) {
+            console.error("[Blink] Shopify instance not initialized.");
+            return;
+        }
+        try {
+            const cachedCart = localStorage.getItem(this._cartStorageKey);
+            if (cachedCart) {
+                this._cart = JSON.parse(cachedCart);
+                this.cartId = this._cart.id;
+                console.info(
+                    "[Blink] Cart loaded from localStorage:",
+                    this._cart
+                );
             }
+        } catch (err) {
+            console.warn("[Blink] Invalid or expired cart, resetting...");
+            this._clearCart();
         }
 
         this._setupAddToCartButtons();
@@ -137,12 +144,19 @@ class GlobalBlink {
         if (!this.cartId) {
             const cart = await this._createCart(variantId, quantity);
             this.cartId = cart.id;
-            this._saveCartIdToStorage(cart.id);
             this._cart = await this._fetchCart(this.cartId);
+            localStorage.setItem(
+                this._cartStorageKey,
+                JSON.stringify(this._cart)
+            );
             return this._cart;
         } else {
             await this._addToExistingCart(variantId, quantity);
             this._cart = await this._fetchCart(this.cartId); // update with fresh data
+            localStorage.setItem(
+                this._cartStorageKey,
+                JSON.stringify(this._cart)
+            );
             return this._cart;
         }
     }
@@ -150,33 +164,15 @@ class GlobalBlink {
     async _createCart(variantId, quantity) {
         try {
             const query = `
-      mutation cartCreate($input: CartInput!) {
-        cartCreate(input: $input) {
-          cart {
-            id
-            checkoutUrl
-            lines(first: 5) {
-              edges {
-                node {
-                  id
-                  quantity
-                  merchandise {
-                    ... on ProductVariant {
-                      id
-                      title
-                    }
-                  }
+            mutation cartCreate($input: CartInput!) {
+                cartCreate(input: $input) {
+                userErrors {
+                    field
+                    message
                 }
-              }
+                }
             }
-          }
-          userErrors {
-            field
-            message
-          }
-        }
-      }
-    `;
+            `;
 
             const variables = {
                 input: {
@@ -190,6 +186,15 @@ class GlobalBlink {
             };
 
             const response = await this._executeShopifyQuery(query, variables);
+            if (response.userErrors && response.userErrors.length > 0) {
+                console.error(
+                    "[Blink] Shopify user errors:",
+                    response.userErrors
+                );
+                throw new Error(
+                    "Failed to create cart: " + response.userErrors[0].message
+                );
+            }
             return response.data.cartCreate.cart;
         } catch (error) {
             console.error("[Blink] Error creating cart:", error);
@@ -198,80 +203,137 @@ class GlobalBlink {
 
     async _addToExistingCart(variantId, quantity) {
         const query = `
-      mutation cartLinesAdd($cartId: ID!, $lines: [CartLineInput!]!) {
-        cartLinesAdd(cartId: $cartId, lines: $lines) {
-          cart {
-            id
-            lines(first: 10) {
-              edges {
-                node {
-                  id
-                  quantity
-                  merchandise {
-                    ... on ProductVariant {
-                      id
-                      title
-                    }
-                  }
+            mutation cartLinesAdd($cartId: ID!, $lines: [CartLineInput!]!) {
+                cartLinesAdd(cartId: $cartId, lines: $lines) {
+                userErrors {
+                    field
+                    message
                 }
-              }
+                }
             }
-          }
-          userErrors {
-            field
-            message
-          }
-        }
-      }
-    `;
+            `;
         const variables = {
             cartId: this.cartId,
             lines: [{ quantity, merchandiseId: variantId }],
         };
         const res = await this._executeShopifyQuery(query, variables);
+        if (
+            res.data.cartLinesAdd.userErrors &&
+            res.data.cartLinesAdd.userErrors.length > 0
+        ) {
+            console.error(
+                "[Blink] Shopify user errors:",
+                res.data.cartLinesAdd.userErrors
+            );
+            throw new Error(
+                "Failed to add to cart: " +
+                    res.data.cartLinesAdd.userErrors[0].message
+            );
+        }
         return res.data.cartLinesAdd.cart;
     }
 
     async _fetchCart(cartId) {
         const query = `
-      query getCart($cartId: ID!) {
-        cart(id: $cartId) {
-          id
-          checkoutUrl
-          lines(first: 10) {
-            edges {
-              node {
+            query getCart($cartId: ID!) {
+            cart(id: $cartId) {
                 id
-                quantity
-                merchandise {
-                  ... on ProductVariant {
+                checkoutUrl
+                createdAt
+                updatedAt
+                totalQuantity
+
+                lines(first: 50) {
+                edges {
+                    node {
                     id
-                    title
-                  }
+                    quantity
+                    attributes {
+                        key
+                        value
+                    }
+                    cost {
+                        amountPerQuantity {
+                        amount
+                        currencyCode
+                        }
+                        totalAmount {
+                        amount
+                        currencyCode
+                        }
+                    }
+                    merchandise {
+                        ... on ProductVariant {
+                        id
+                        title
+                        sku
+                        availableForSale
+                        quantityAvailable
+                        image {
+                            url
+                            altText
+                        }
+                        price {
+                            amount
+                            currencyCode
+                        }
+                        product {
+                            id
+                            title
+                            handle
+                            vendor
+                            featuredImage {
+                            url
+                            altText
+                            }
+                        }
+                        }
+                    }
+                    sellingPlanAllocation {
+                        sellingPlan {
+                        id
+                        name
+                        options {
+                            name
+                            value
+                        }
+                        }
+                    }
+                    }
                 }
-              }
+                }
+
+                estimatedCost {
+                subtotalAmount {
+                    amount
+                    currencyCode
+                }
+                totalAmount {
+                    amount
+                    currencyCode
+                }
+                totalTaxAmount {
+                    amount
+                    currencyCode
+                }
+                }
             }
-          }
-        }
-      }
-    `;
+            }
+        `;
+
         const variables = { cartId };
         const res = await this._executeShopifyQuery(query, variables);
+        if (res.errors) {
+            console.error("[Blink] Error fetching cart:", res.errors);
+            throw new Error("Failed to fetch cart: " + res.errors[0].message);
+        }
         return res.data.cart;
     }
 
     _clearCart() {
-        localStorage.removeItem(this._cartIdStorageKey);
+        localStorage.removeItem(this._cartStorageKey);
         this.cartId = null;
         this._cart = null;
-    }
-
-    _loadCartIdFromStorage() {
-        return localStorage.getItem(this._cartIdStorageKey);
-    }
-
-    _saveCartIdToStorage(cartId) {
-        localStorage.setItem(this._cartIdStorageKey, cartId);
     }
 
     get token() {
