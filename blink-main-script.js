@@ -64,26 +64,27 @@ class Blink {
             return;
         }
 
+        const url = `https://${this.shopify.storeDomain}/api/2024-01/graphql.json`;
+
         try {
-            const response = await axios({
-                url: `https://${this.shopify.storeDomain}/api/2024-01/graphql.json`,
+            const response = await fetch(url, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                     "X-Shopify-Storefront-Access-Token": this.shopify.token,
                 },
-                data: {
-                    query,
-                    variables,
-                },
+                body: JSON.stringify({ query, variables }),
             });
 
-            return response.data;
+            if (!response.ok) {
+                const errorData = await response.json();
+                console.error("Shopify API Error:", errorData);
+                throw new Error(`Shopify GraphQL error: ${response.status}`);
+            }
+
+            return await response.json();
         } catch (error) {
-            console.error(
-                "Shopify API Error:",
-                error.response?.data || error.message
-            );
+            console.error("Shopify API Error:", error.message);
             throw error;
         }
     }
