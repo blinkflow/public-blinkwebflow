@@ -31,6 +31,7 @@ class GlobalBlink {
         this._setupAddToCartButtons();
         this._setupAddToCartButtons();
         await this._fetchAllProductsOnPage();
+        this._setupCartTriggerButtons();
     }
 
     _initShopify(config) {
@@ -390,6 +391,35 @@ class GlobalBlink {
                 JSON.stringify(this._cart)
             );
             return this._cart;
+        }
+    }
+
+    /**
+     * Setup cart trigger buttons to toggle the cart drawer.
+     */
+    _setupCartTriggerButtons() {
+        const triggers = document.querySelectorAll("[data-bf-cart-trigger]");
+        triggers.forEach((button) => {
+            button.addEventListener("click", () => {
+                this._toggleCartDrawer();
+            });
+        });
+    }
+
+    /**
+     * Toggles the cart drawer open/closed.
+     */
+    _toggleCartDrawer() {
+        const cartDrawer = document.querySelector("[data-bf-cart-drawer]");
+        if (cartDrawer) {
+            const isOpen = cartDrawer.classList.contains("open");
+            if (isOpen) {
+                cartDrawer.classList.remove("open");
+                cartDrawer.setAttribute("aria-hidden", "true");
+            } else {
+                cartDrawer.classList.add("open");
+                cartDrawer.setAttribute("aria-hidden", "false");
+            }
         }
     }
 
