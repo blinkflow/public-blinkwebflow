@@ -269,10 +269,7 @@ class GlobalBlink {
           }
         }
         `;
-        const res = await this._executeShopifyQuery(
-            query,
-            (variables = { id: productId })
-        );
+        const res = await this._executeShopifyQuery(query, { id: productId });
         if (res && res.data && res.data.node) {
             return res.data.node;
         }
