@@ -98,7 +98,7 @@ class GlobalBlink {
      */
     async _fetchAndStoreProduct(productId) {
         const query = `
-        query Products @inContext(language: EN) {
+        query Products($id: ID!) @inContext(language: EN) {
           node(id: $id) {
             ... on Product {
               id
