@@ -29,9 +29,10 @@ class GlobalBlink {
         }
 
         this._setupAddToCartButtons();
-        this._setupAddToCartButtons();
         await this._fetchAllProductsOnPage();
         this._setupCartTriggerButtons();
+        this._setupCheckoutButtons();
+        this._setupClearCartButtons();
     }
 
     _initShopify(config) {
@@ -353,7 +354,7 @@ class GlobalBlink {
             return;
         }
 
-        const variantId = product.variants[0].id;
+        const variantId = product?.variants?.edges?.[0]?.node?.id;
 
         if (!variantId) {
             console.error("[Blink] Missing variant id.");
@@ -403,7 +404,7 @@ class GlobalBlink {
             button.addEventListener("click", () => {
                 this._toggleCartDrawer();
             });
-        });
+        }); 
     }
 
     /**
@@ -634,6 +635,19 @@ class GlobalBlink {
         localStorage.removeItem(this._cartStorageKey);
         this.cartId = null;
         this._cart = null;
+    }
+
+    /**
+     * Setup clear cart buttons to clear the cart and update UI.
+     */
+    _setupClearCartButtons() {
+        const clearButtons = document.querySelectorAll("[data-bf-clear-cart]");
+        clearButtons.forEach((button) => {
+            button.addEventListener("click", (e) => {
+                e.preventDefault();
+                this._clearCart();
+            });
+        });
     }
 
     /**
