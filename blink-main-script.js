@@ -289,7 +289,7 @@ class GlobalBlink {
             return;
         }
 
-        const url = `https://${this.shopify.storeDomain}/api/2024-01/graphql.json`;
+        const url = `https://${this.shopify.storeDomain}/api/2025-04/graphql.json`;
 
         try {
             const response = await fetch(url, {
