@@ -3,6 +3,7 @@ class GlobalBlink {
         this.shopify = null;
         this._cartStorageKey = "blink_cart";
         this._cart = null;
+        this.currentProducts = {};
         this._init(config);
     }
 
