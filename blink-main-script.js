@@ -28,6 +28,8 @@ class GlobalBlink {
         }
 
         this._setupAddToCartButtons();
+        this._setupAddToCartButtons();
+        await this._fetchAllProductsOnPage();
     }
 
     _initShopify(config) {
@@ -58,6 +60,224 @@ class GlobalBlink {
 
         console.info("[Blink] Shopify instance created:", this.shopify);
     }
+
+    /**
+     * Fetches product data for all products on the page and stores in currentProducts.
+     */
+    async _fetchAllProductsOnPage() {
+        const productEls = document.querySelectorAll("[data-bf-product-id]");
+        const ids = Array.from(productEls)
+            .map((el) => el.getAttribute("data-bf-product-id"))
+            .filter(Boolean);
+
+        // Avoid duplicate fetches
+        const uniqueIds = [...new Set(ids)];
+
+        await Promise.all(
+            uniqueIds.map(async (id) => {
+                try {
+                    const product = await this._fetchAndStoreProduct(id);
+                    if (product) {
+                        this.currentProducts[id] = product;
+                    }
+                } catch (err) {
+                    console.error(
+                        `[Blink] Failed to fetch product ${id}:`,
+                        err
+                    );
+                }
+            })
+        );
+    }
+
+    /**
+     * Fetches a single product by Shopify node ID and returns the product object.
+     * @param {string} productId
+     * @returns {Promise<Object|null>}
+     */
+    async _fetchAndStoreProduct(productId) {
+        const query = `
+        query Products @inContext(language: EN) {
+          node(id: $id) {
+            ... on Product {
+              id
+              title
+              handle
+              description
+              descriptionHtml
+              priceRange {
+                minVariantPrice { amount currencyCode }
+                maxVariantPrice { amount currencyCode }
+              }
+              compareAtPriceRange {
+                minVariantPrice { amount currencyCode }
+                maxVariantPrice { amount currencyCode }
+              }
+              options {
+                name
+                optionValues {
+                  id
+                  name
+                  swatch {
+                    color
+                    image {
+                      id
+                      alt
+                      previewImage {
+                        altText
+                        url
+                      }
+                    }
+                  }
+                }
+              }
+              images(first: 100) {
+                edges {
+                  node {
+                    src
+                    altText
+                    id
+                    width
+                    height
+                  }
+                }
+              }
+              collections(first: 250) {
+                edges {
+                  node {
+                    id
+                    title
+                    metafields(identifiers: []) {
+                      id
+                      namespace
+                      key
+                      value
+                      reference {
+                        __typename
+                        ... on MediaImage {
+                          alt
+                          image { url }
+                        }
+                      }
+                      type
+                      description
+                    }
+                    handle
+                    description
+                    descriptionHtml
+                    image { src }
+                  }
+                }
+              }
+              vendor
+              productType
+              tags
+              requiresSellingPlan
+              variants(first: 100) {
+                edges {
+                  node {
+                    id
+                    product { id title vendor }
+                    title
+                    sku
+                    barcode
+                    price { amount currencyCode }
+                    unitPrice { amount currencyCode }
+                    compareAtPrice { amount currencyCode }
+                    image { src altText id width height }
+                    selectedOptions { name value }
+                    availableForSale
+                    currentlyNotInStock
+                    quantityAvailable
+                    product { id title vendor }
+                    metafields(identifiers: []) {
+                      id
+                      namespace
+                      key
+                      value
+                      reference {
+                        __typename
+                        ... on MediaImage {
+                          alt
+                          image { url }
+                        }
+                      }
+                      type
+                      description
+                    }
+                    weight
+                    weightUnit
+                    sellingPlanAllocations(first: 10) {
+                      edges {
+                        node {
+                          sellingPlan {
+                            id
+                            name
+                            description
+                            checkoutCharge { type value }
+                            recurringDeliveries
+                            options { name value }
+                          }
+                          priceAdjustments {
+                            price { amount currencyCode }
+                            compareAtPrice { amount currencyCode }
+                            perDeliveryPrice { amount currencyCode }
+                            unitPrice { amount currencyCode }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+              sellingPlanGroups(first: 10) {
+                edges {
+                  node {
+                    appName
+                    name
+                    sellingPlans(first: 10) {
+                      edges {
+                        node {
+                          id
+                          name
+                          description
+                          recurringDeliveries
+                          options { name value }
+                          priceAdjustments {
+                            orderCount
+                            adjustmentValue {
+                              __typename
+                              ... on SellingPlanPercentagePriceAdjustment {
+                                adjustmentPercentage
+                              }
+                              ... on SellingPlanFixedAmountPriceAdjustment {
+                                adjustmentAmount { amount currencyCode }
+                              }
+                              ... on SellingPlanFixedPriceAdjustment {
+                                price { amount currencyCode }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        `;
+        const res = await this._executeShopifyQuery(
+            query,
+            (variables = { id: productId })
+        );
+        if (res && res.data && res.data.node) {
+            return res.data.node;
+        }
+        return null;
+    }
+
     /**
      * Execute a GraphQL query against the Shopify Storefront API
      * @param {string} query - GraphQL query string
@@ -121,22 +341,36 @@ class GlobalBlink {
 
     _handleAddToCart(button) {
         const productEl = button.closest("[data-bf-product-id]");
-        const variantId = button.getAttribute("data-bf-variant-id");
         const quantityEl = productEl?.querySelector("[data-bf-qty]");
 
         const quantity = quantityEl ? parseInt(quantityEl.value, 10) : 1;
 
-        if (!variantId) {
-            console.error("[Blink] Missing data-bf-variant-id.");
+        const product = this.currentProducts[productEl.dataset.bfProductId];
+        if (!product) {
+            console.error(
+                "[Blink] Product not found in currentProducts:",
+                productEl.dataset.bfProductId
+            );
             return;
         }
 
+        const variantId = product.variants[0].id;
+
+        if (!variantId) {
+            console.error("[Blink] Missing variant id.");
+            return;
+        }
+        this._setButtonLoading(button, true);
         this.addToCart({ variantId, quantity })
             .then(() => {
                 console.log("[Blink] Added to cart:", { variantId, quantity });
+                this._openCartDrawer();
             })
             .catch((err) => {
                 console.error("[Blink] Add to cart failed:", err);
+            })
+            .finally(() => {
+                this._setButtonLoading(button, false);
             });
     }
 
@@ -158,6 +392,38 @@ class GlobalBlink {
                 JSON.stringify(this._cart)
             );
             return this._cart;
+        }
+    }
+
+    /**
+     * Opens the cart drawer by adding an "open" class and setting aria-hidden.
+     */
+    _openCartDrawer() {
+        const cartDrawer = document.querySelector("[data-bf-cart-drawer]");
+        if (cartDrawer) {
+            cartDrawer.classList.add("open");
+            cartDrawer.setAttribute("aria-hidden", "false");
+        }
+    }
+
+    /**
+     * Sets loading state on the given button.
+     * @param {HTMLElement} button
+     * @param {boolean} isLoading
+     */
+    _setButtonLoading(button, isLoading) {
+        if (isLoading) {
+            button.disabled = true;
+            button.classList.add("bf-loading");
+            button.dataset.originalText = button.innerHTML;
+            button.innerHTML = "Adding...";
+        } else {
+            button.disabled = false;
+            button.classList.remove("bf-loading");
+            if (button.dataset.originalText) {
+                button.innerHTML = button.dataset.originalText;
+                delete button.dataset.originalText;
+            }
         }
     }
 
@@ -198,7 +464,7 @@ class GlobalBlink {
                     "Failed to create cart: " + response.userErrors[0].message
                 );
             }
-            return response.data.cartCreate.cart
+            return response.data.cartCreate.cart;
         } catch (error) {
             console.error("[Blink] Error creating cart:", error);
         }
@@ -236,7 +502,7 @@ class GlobalBlink {
                     res.data.cartLinesAdd.userErrors[0].message
             );
         }
-        return res.data.cartLinesAdd.cart
+        return res.data.cartLinesAdd.cart;
     }
 
     async _fetchCart(cartId) {
@@ -340,6 +606,24 @@ class GlobalBlink {
         localStorage.removeItem(this._cartStorageKey);
         this.cartId = null;
         this._cart = null;
+    }
+
+    /**
+     * Setup checkout buttons to use the current cart's checkoutUrl.
+     */
+    _setupCheckoutButtons() {
+        const checkoutButtons = document.querySelectorAll("[data-bf-checkout]");
+        checkoutButtons.forEach((button) => {
+            button.addEventListener("click", (e) => {
+                e.preventDefault();
+                if (this._cart && this._cart.checkoutUrl) {
+                    // You can redirect or use the URL as needed
+                    window.location.href = this._cart.checkoutUrl;
+                } else {
+                    console.warn("[Blink] No checkoutUrl available on cart.");
+                }
+            });
+        });
     }
 
     get token() {
