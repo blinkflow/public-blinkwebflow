@@ -5,14 +5,34 @@ class GlobalBlink {
         this._cart = null;
         this.currentProducts = {};
         this._init(config);
+        this._templates = {};
     }
 
+    _loaderSVG = `
+        <svg class="bf-loader-svg" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10" stroke-opacity="0.2"/>
+        <path d="M22 12a10 10 0 0 1-10 10" />
+        <style>
+            .bf-loader-svg { animation: bf-rotate 1s linear infinite; vertical-align: middle;}
+            @keyframes bf-rotate { 100% { transform: rotate(360deg); } }
+        </style>
+        </svg>
+        `;
+
+    _checkSVG = `
+        <svg class="bf-check-svg" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M20 6 9 17l-5-5"/>
+        </svg>
+        `;
+
     async _init(config) {
+        this._closeCartDrawer();
         this._initShopify(config);
         if (!this.shopify) {
             console.error("[Blink] Shopify instance not initialized.");
             return;
         }
+        await this._fetchShopMoneyFormat();
         try {
             const cachedCart = localStorage.getItem(this._cartStorageKey);
             if (cachedCart) {
@@ -25,12 +45,14 @@ class GlobalBlink {
             }
         } catch (err) {
             console.warn("[Blink] Invalid or expired cart, resetting...");
-            this._clearCart();
+            await this._clearCart();
         }
 
-        this._setupAddToCartButtons();
         await this._fetchAllProductsOnPage();
+        this._setupAddToCartButtons();
+        this._renderProductPrices();
         this._setupCartTriggerButtons();
+        this._renderCart();
         this._setupCheckoutButtons();
         this._setupClearCartButtons();
     }
@@ -62,6 +84,52 @@ class GlobalBlink {
         };
 
         console.info("[Blink] Shopify instance created:", this.shopify);
+    }
+
+    /**
+     * Renders product price and compare at price for the first variant in each product container.
+     */
+    _renderProductPrices() {
+        document
+            .querySelectorAll("[data-bf-product-id]")
+            .forEach((productEl) => {
+                const productId = productEl.getAttribute("data-bf-product-id");
+                const product = this.currentProducts[productId];
+                if (!product) return;
+
+                // Get first variant
+                const variant = product.variants?.edges?.[0]?.node;
+                if (!variant) return;
+
+                // Render price
+                const priceEl = productEl.querySelector(
+                    "[data-bf-product-price]"
+                );
+                if (priceEl && variant.price) {
+                    priceEl.textContent = this._formatMoney(
+                        variant.price.amount,
+                        variant.price.currencyCode
+                    );
+                }
+
+                // Render compare at price
+                const compareAtEl = productEl.querySelector(
+                    "[data-bf-product-compare-at-price]"
+                );
+                if (
+                    compareAtEl &&
+                    variant.compareAtPrice &&
+                    variant.compareAtPrice.amount
+                ) {
+                    compareAtEl.textContent = this._formatMoney(
+                        variant.compareAtPrice.amount,
+                        variant.compareAtPrice.currencyCode
+                    );
+                    compareAtEl.style.display = "";
+                } else if (compareAtEl) {
+                    compareAtEl.style.display = "none";
+                }
+            });
     }
 
     /**
@@ -332,10 +400,24 @@ class GlobalBlink {
 
     _setupAddToCartButtons() {
         const buttons = document.querySelectorAll("[data-bf-add-to-cart]");
+
         buttons.forEach((button) => {
-            button.addEventListener("click", () =>
-                this._handleAddToCart(button)
-            );
+            // Check if first variant is available before setting up click
+            const productEl = button.closest("[data-bf-product-id]");
+            if (productEl) {
+                const productId = productEl.getAttribute("data-bf-product-id");
+                const product = this.currentProducts[productId];
+                const variant = product?.variants?.edges?.[0]?.node;
+                if (!variant || !variant.availableForSale) {
+                    button.disabled = true;
+                    button.innerHTML = "Out of stock";
+                }
+            }
+
+            button.addEventListener("click", (e) => {
+                e.preventDefault();
+                this._handleAddToCart(button);
+            });
         });
     }
 
@@ -354,85 +436,38 @@ class GlobalBlink {
             return;
         }
 
-        const variantId = product?.variants?.edges?.[0]?.node?.id;
+        const variant = product?.variants?.edges?.[0]?.node;
+        const variantId = variant?.id;
+
+        // Check if first variant is available for sale
+        if (!variant || !variant.availableForSale) {
+            button.disabled = true;
+            button.innerHTML = "Out of stock";
+            return;
+        }
 
         if (!variantId) {
             console.error("[Blink] Missing variant id.");
             return;
         }
+
         this._setButtonLoading(button, true);
         this.addToCart({ variantId, quantity })
             .then(() => {
                 console.log("[Blink] Added to cart:", { variantId, quantity });
+                button.innerHTML = this._checkSVG;
+                setTimeout(() => {
+                    this._setButtonLoading(button, false);
+                }, 1500);
                 this._openCartDrawer();
             })
             .catch((err) => {
+                button.innerHTML = "Error";
+                setTimeout(() => {
+                    this._setButtonLoading(button, false);
+                }, 1500);
                 console.error("[Blink] Add to cart failed:", err);
-            })
-            .finally(() => {
-                this._setButtonLoading(button, false);
             });
-    }
-
-    async addToCart({ variantId, quantity = 1 }) {
-        if (!this._cart) {
-            const cart = await this._createCart(variantId, quantity);
-            this.cartId = cart.id;
-            this._cart = await this._fetchCart(this.cartId);
-            localStorage.setItem(
-                this._cartStorageKey,
-                JSON.stringify(this._cart)
-            );
-            return this._cart;
-        } else {
-            await this._addToExistingCart(variantId, quantity);
-            this._cart = await this._fetchCart(this.cartId); // update with fresh data
-            localStorage.setItem(
-                this._cartStorageKey,
-                JSON.stringify(this._cart)
-            );
-            return this._cart;
-        }
-    }
-
-    /**
-     * Setup cart trigger buttons to toggle the cart drawer.
-     */
-    _setupCartTriggerButtons() {
-        const triggers = document.querySelectorAll("[data-bf-cart-trigger]");
-        triggers.forEach((button) => {
-            button.addEventListener("click", () => {
-                this._toggleCartDrawer();
-            });
-        }); 
-    }
-
-    /**
-     * Toggles the cart drawer open/closed.
-     */
-    _toggleCartDrawer() {
-        const cartDrawer = document.querySelector("[data-bf-cart-drawer]");
-        if (cartDrawer) {
-            const isOpen = cartDrawer.classList.contains("open");
-            if (isOpen) {
-                cartDrawer.classList.remove("open");
-                cartDrawer.setAttribute("aria-hidden", "true");
-            } else {
-                cartDrawer.classList.add("open");
-                cartDrawer.setAttribute("aria-hidden", "false");
-            }
-        }
-    }
-
-    /**
-     * Opens the cart drawer by adding an "open" class and setting aria-hidden.
-     */
-    _openCartDrawer() {
-        const cartDrawer = document.querySelector("[data-bf-cart-drawer]");
-        if (cartDrawer) {
-            cartDrawer.classList.add("open");
-            cartDrawer.setAttribute("aria-hidden", "false");
-        }
     }
 
     /**
@@ -444,8 +479,10 @@ class GlobalBlink {
         if (isLoading) {
             button.disabled = true;
             button.classList.add("bf-loading");
-            button.dataset.originalText = button.innerHTML;
-            button.innerHTML = "Adding...";
+            if (!button.dataset.originalText) {
+                button.dataset.originalText = button.innerHTML;
+            }
+            button.innerHTML = this._loaderSVG;
         } else {
             button.disabled = false;
             button.classList.remove("bf-loading");
@@ -453,6 +490,87 @@ class GlobalBlink {
                 button.innerHTML = button.dataset.originalText;
                 delete button.dataset.originalText;
             }
+        }
+    }
+
+    _setButtonSuccess(button) {
+        button.disabled = true;
+        button.innerHTML = this._checkSVG;
+        setTimeout(() => {
+            this._setButtonLoading(button, false);
+        }, 1500);
+    }
+
+    /**
+     * Adds a product variant to the cart, creating a new cart if necessary.
+     * @param {Object} params - Parameters for adding to cart.
+     * @param {string} params.variantId - The ID of the product variant to add.
+     * @param {number} [params.quantity=1] - The quantity of the variant to add.
+     * @returns {Promise<Object>} The updated cart object.
+     */
+    async addToCart({ variantId, quantity = 1 }) {
+        if (!this._cart) {
+            const cart = await this._createCart(variantId, quantity);
+            this.cartId = cart.id;
+            await this._refreshCart();
+            return this._cart;
+        } else {
+            await this._addToExistingCart(variantId, quantity);
+            await this._refreshCart();
+            return this._cart;
+        }
+    }
+
+    /**
+     * Setup cart trigger buttons to toggle the cart drawer.
+     */
+    _setupCartTriggerButtons() {
+        const triggers = document.querySelectorAll("[data-bf-cart-trigger]");
+        triggers.forEach((button) => {
+            button.addEventListener("click", () => {
+                const cartDrawer = document.querySelector(
+                    "[data-bf-cart-drawer]"
+                );
+                if (cartDrawer) {
+                    const isOpen = cartDrawer.classList.contains("open");
+                    if (isOpen) {
+                        this._closeCartDrawer(cartDrawer);
+                    } else {
+                        this._openCartDrawer(cartDrawer);
+                    }
+                }
+            });
+        });
+    }
+
+    /**
+     * Toggles the cart drawer open/closed.
+     * @param {HTMLElement} cartDrawer - The cart drawer element to toggle.
+     * If not provided, it will look for the first element with [data-bf-cart-drawer].
+     */
+    _closeCartDrawer(cartDrawer) {
+        const drawer = cartDrawer
+            ? cartDrawer
+            : document.querySelector("[data-bf-cart-drawer]");
+        if (drawer) {
+            drawer.classList.remove("open");
+            drawer.setAttribute("aria-hidden", "true");
+        }
+    }
+
+    /**
+     * Opens the cart drawer by adding an "open" class and setting aria-hidden.
+     * @param {HTMLElement} cartDrawer - The cart drawer element to open.
+     * If not provided, it will look for the first element with [data-bf-cart-drawer].
+     */
+    _openCartDrawer(cartDrawer) {
+        const drawer = cartDrawer
+            ? cartDrawer
+            : document.querySelector("[data-bf-cart-drawer]");
+
+        if (drawer) {
+            drawer.classList.add("open");
+            drawer.setAttribute("aria-hidden", "false");
         }
     }
 
@@ -499,6 +617,12 @@ class GlobalBlink {
         }
     }
 
+    /**
+     * Adds a line item to an existing cart.
+     * @param {string} variantId - The ID of the product variant to add.
+     * @param {number} quantity - The quantity of the variant to add.
+     * @returns {Promise<Object>} The updated cart object.
+     */
     async _addToExistingCart(variantId, quantity) {
         const query = `
             mutation cartLinesAdd($cartId: ID!, $lines: [CartLineInput!]!) {
@@ -534,6 +658,11 @@ class GlobalBlink {
         return res.data.cartLinesAdd.cart;
     }
 
+    /**
+     * Fetches the cart by ID and returns the cart object.
+     * @param {string} cartId - The ID of the cart to fetch.
+     * @returns {Promise<Object>} The cart object.
+     */
     async _fetchCart(cartId) {
         const query = `
             query getCart($cartId: ID!) {
@@ -626,15 +755,37 @@ class GlobalBlink {
         const res = await this._executeShopifyQuery(query, variables);
         if (res.errors) {
             console.error("[Blink] Error fetching cart:", res.errors);
-            throw new Error("Failed to fetch cart: " + res.errors[0].message);
+            return null;
         }
         return res.data.cart;
     }
 
-    _clearCart() {
-        localStorage.removeItem(this._cartStorageKey);
-        this.cartId = null;
-        this._cart = null;
+    async _clearCart() {
+        if (
+            this._cart &&
+            this._cart.lines &&
+            this._cart.lines.edges.length > 0
+        ) {
+            // Remove all line items from the cart
+            const lineIds = this._cart.lines.edges.map((edge) => edge.node.id);
+            if (lineIds.length > 0) {
+                const query = `
+                mutation cartLinesRemove($cartId: ID!, $lineIds: [ID!]!) {
+                    cartLinesRemove(cartId: $cartId, lineIds: $lineIds) {
+                        cart { id }
+                        userErrors { field message }
+                    }
+                }
+            `;
+                const variables = { cartId: this.cartId, lineIds };
+                await this._executeShopifyQuery(query, variables);
+            }
+            // Refresh cart after removing all items
+            await this._refreshCart();
+        } else {
+            // If no cart or already empty, just refresh
+            await this._refreshCart();
+        }
     }
 
     /**
@@ -643,9 +794,9 @@ class GlobalBlink {
     _setupClearCartButtons() {
         const clearButtons = document.querySelectorAll("[data-bf-clear-cart]");
         clearButtons.forEach((button) => {
-            button.addEventListener("click", (e) => {
+            button.addEventListener("click", async (e) => {
                 e.preventDefault();
-                this._clearCart();
+                await this._clearCart();
             });
         });
     }
@@ -666,6 +817,219 @@ class GlobalBlink {
                 }
             });
         });
+    }
+
+    /**
+     * Renders the cart line items and updates subtotal/total in the DOM.
+     */
+    _renderCart() {
+        // Update all line item containers
+        document.querySelectorAll("[data-bf-cart]").forEach((cart) => {
+            // Get Cart Line Item Container
+            const container = cart.querySelector("[data-bf-line-items]");
+            if (!container) {
+                console.warn("[Blink] No cart line item container found.");
+                return;
+            }
+
+            let template = this._templates.cartTemplate;
+            // Get and store the template line item element
+            if (!template) {
+                template = container.querySelector("[data-bf-line-item]");
+                if (!template) {
+                    console.warn("[Blink] No cart line item template found.");
+                    return;
+                }
+                this._templates.cartTemplate = template.cloneNode(true);
+            }
+
+            template.style.display = "none"; // Hide the template in the DOM
+
+            const emptyMessage = cart.querySelector(
+                "[data-bf-empty-cart-message]"
+            );
+
+            if (emptyMessage) {
+                emptyMessage.style.display = "none";
+            }
+
+            // Remove all existing line items except the template
+            container.querySelectorAll("[data-bf-line-item]").forEach((el) => {
+                if (el !== template) el.remove();
+            });
+
+            const subTotalElem = cart.querySelector("[data-bf-cart-subtotal]");
+            const totalElem = cart.querySelector("[data-bf-cart-total]");
+            this._updateCartTotals(subTotalElem, totalElem);
+
+            // If no cart or no lines, hide all but template and clear totals
+            if (
+                !this._cart ||
+                !this._cart.lines ||
+                !this._cart.lines.edges.length
+            ) {
+                template.style.display = "none";
+                emptyMessage.style.display = "";
+                return;
+            }
+
+            // Render each line item
+            this._cart.lines.edges.forEach((edge, i) => {
+                const line = edge.node;
+                const itemEl = template.cloneNode(true);
+                container.appendChild(itemEl);
+                itemEl.style.display = "";
+
+                // Set image
+                const img = itemEl.querySelector("[data-bf-line-image]");
+                if (img) {
+                    img.src = line.merchandise.image?.url;
+                    img.alt = line.merchandise.image?.altText || "";
+                }
+
+                // Set title
+                const titleEl = itemEl.querySelector("[data-bf-line-title]");
+                if (titleEl)
+                    titleEl.textContent = line.merchandise.product.title;
+
+                // Set selected option
+                const optionEl = itemEl.querySelector(
+                    "[data-bf-line-selected-option]"
+                );
+
+                if (optionEl) {
+                    optionEl.textContent = line.merchandise.title;
+                }
+
+                // Set quantity
+                const qtyEl = itemEl.querySelector("[data-bf-line-qty]");
+                if (qtyEl) qtyEl.textContent = line.quantity;
+
+                // Set amount per qty
+                const perQtyEl = itemEl.querySelector(
+                    "[data-bf-line-amount-per-qty]"
+                );
+                if (perQtyEl && line.cost && line.cost.amountPerQuantity) {
+                    perQtyEl.textContent = this._formatMoney(
+                        line.cost.amountPerQuantity.amount,
+                        line.cost.amountPerQuantity.currencyCode
+                    );
+                }
+
+                // Set total amount
+                const totalEl = itemEl.querySelector(
+                    "[data-bf-line-total-amount]"
+                );
+                if (totalEl && line.cost && line.cost.totalAmount) {
+                    totalEl.textContent = this._formatMoney(
+                        line.cost.totalAmount.amount,
+                        line.cost.totalAmount.currencyCode
+                    );
+                }
+
+                // Set remove button
+                const removeBtn = itemEl.querySelector(
+                    "[data-bf-remove-line-item]"
+                );
+                if (removeBtn) {
+                    removeBtn.onclick = async (e) => {
+                        e.preventDefault();
+                        await this._removeLineItem(line.id);
+                        await this._refreshCart();
+                    };
+                }
+            });
+
+            // Hide the template if more than one item
+            if (this._cart.lines.edges.length > 1) template.style.display = "";
+        });
+    }
+
+    async _fetchShopMoneyFormat() {
+        const query = `
+        {
+            shop {
+                name
+                moneyFormat
+            }
+        }
+    `;
+        const res = await this._executeShopifyQuery(query);
+        this._moneyFormat =
+            res?.data?.shop?.moneyFormat || "{{amount}}{{currency_code}}";
+    }
+
+    /**
+     * Formats a money amount using the shop's moneyFormat.
+     * @param {string|number} amount
+     * @param {string} currency
+     * @returns {string}
+     */
+    _formatMoney(amount, currency) {
+        let formatted = this._moneyFormat || "${{amount}}";
+        // Replace {{amount}} with the value, fixed to 2 decimals
+        formatted = formatted.replace(
+            "{{amount}}",
+            parseFloat(amount).toFixed(2)
+        );
+        // Optionally replace currency code if present
+        formatted = formatted.replace("{{currency_code}}", currency || "");
+        return formatted;
+    }
+
+    /**
+     * @param {HTMLElement} subTotalElem - Element to update with subtotal.
+     * @param {HTMLElement} totalElem - Element to update with total.
+     * Updates subtotal and total cart amount.
+     */
+    _updateCartTotals(subTotalElem, totalElem) {
+        if (!this._cart || !this._cart.estimatedCost) {
+            console.warn("[Blink] No cart or estimated cost available.");
+            return;
+        }
+
+        const subtotal = this._cart?.estimatedCost?.subtotalAmount?.amount || 0;
+        const subtotalCurrency =
+            this._cart?.estimatedCost?.subtotalAmount?.currencyCode || "USD";
+        const total = this._cart?.estimatedCost?.totalAmount?.amount || 0;
+        const totalCurrency =
+            this._cart?.estimatedCost?.totalAmount?.currencyCode || "USD";
+
+        if (subTotalElem) {
+            subTotalElem.textContent = this._formatMoney(
+                subtotal,
+                subtotalCurrency
+            );
+        }
+        if (totalElem) {
+            totalElem.textContent = this._formatMoney(total, totalCurrency);
+        }
+    }
+
+    /**
+     * @param {string} lineId - The ID of the line item to remove.
+     * Removes a line item from the cart by line ID.
+     */
+    async _removeLineItem(lineId) {
+        const query = `
+        mutation cartLinesRemove($cartId: ID!, $lineIds: [ID!]!) {
+            cartLinesRemove(cartId: $cartId, lineIds: $lineIds) {
+                cart { id }
+                userErrors { field message }
+            }
+        }
+    `;
+        const variables = { cartId: this.cartId, lineIds: [lineId] };
+        await this._executeShopifyQuery(query, variables);
+    }
+
+    /**
+     * Fetches the latest cart and re-renders.
+     */
+    async _refreshCart() {
+        this._cart = await this._fetchCart(this.cartId);
+        localStorage.setItem(this._cartStorageKey, JSON.stringify(this._cart));
+        this._renderCart();
     }
 
     get token() {
