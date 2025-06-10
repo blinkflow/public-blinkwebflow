@@ -1,9 +1,23 @@
+/**
+ * Handles communication with the Shopify Storefront API.
+ */
 export class ShopifyClient {
+    /**
+     * @param {object} params
+     * @param {string} params.token - Storefront access token.
+     * @param {string} params.storeDomain - Shopify store domain.
+     */
     constructor({ token, storeDomain }) {
         this.token = token;
         this.storeDomain = storeDomain;
     }
 
+    /**
+     * Executes a GraphQL query against the Shopify Storefront API.
+     * @param {string} query - GraphQL query string.
+     * @param {object} [variables={}] - Query variables.
+     * @returns {Promise<object>} The API response.
+     */
     async executeQuery(query, variables = {}) {
         if (!this.token || !this.storeDomain) {
             console.error("[Blink] Shopify instance is not initialized.");

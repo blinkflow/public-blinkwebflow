@@ -1,18 +1,51 @@
 import { MoneyFormatter } from "../utils.js";
 
+/**
+ * Handles rendering and UI interactions for products.
+ */
 export class ProductUI {
-    constructor(productManager, cart, moneyFormatGetter) {
+    /**
+     * @param {object} productManager - ProductManager instance.
+     * @param {object} cart - Cart instance.
+     * @param {object} cartUI - CartUI instance.
+     * @param {function} moneyFormatGetter - Function returning money format string.
+     */
+    constructor(productManager, cart, cartUI, moneyFormatGetter) {
         this.productManager = productManager;
         this.cart = cart;
+        this.cartUI = cartUI;
         this.getMoneyFormat = moneyFormatGetter; // function to get moneyFormat
+        this._loaderSVG = `
+        <svg class="bf-loader-svg" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10" stroke-opacity="0.2"/>
+        <path d="M22 12a10 10 0 0 1-10 10" />
+        <style>
+            .bf-loader-svg { animation: bf-rotate 1s linear infinite; vertical-align: middle;}
+            @keyframes bf-rotate { 100% { transform: rotate(360deg); } }
+        </style>
+        </svg>
+        `;
+
+        this._checkSVG = `
+        <svg class="bf-check-svg" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M20 6 9 17l-5-5"/>
+        </svg>
+        `;
     }
 
+    /**
+     * Initializes product UI, fetches products, renders prices, sets up buttons.
+     * @returns {Promise<void>}
+     */
     async init() {
         await this.productManager.fetchAllProductsOnPage();
         this.renderProductPrices();
         this.setupAddToCartButtons();
     }
 
+    /**
+     * Renders product prices and compare-at prices on the page.
+     */
     renderProductPrices() {
         document
             .querySelectorAll("[data-bf-product-id]")
@@ -58,7 +91,11 @@ export class ProductUI {
             });
     }
 
-    setupAddToCartButtons(loaderSVG, checkSVG, setButtonLoading, openCartDrawer) {
+    /**
+     * Sets up add-to-cart buttons for all products.
+     * @param {function} openCartDrawer
+     */
+    setupAddToCartButtons(openCartDrawer) {
         const buttons = document.querySelectorAll("[data-bf-add-to-cart]");
 
         buttons.forEach((button) => {
@@ -75,18 +112,16 @@ export class ProductUI {
 
             button.addEventListener("click", (e) => {
                 e.preventDefault();
-                this.handleAddToCart(
-                    button,
-                    loaderSVG,
-                    checkSVG,
-                    setButtonLoading,
-                    openCartDrawer
-                );
+                this.handleAddToCart(button);
             });
         });
     }
 
-    handleAddToCart(button, loaderSVG, checkSVG, setButtonLoading, openCartDrawer) {
+    /**
+     * Handles add-to-cart button click.
+     * @param {HTMLElement} button
+     */
+    handleAddToCart(button) {
         const productEl = button.closest("[data-bf-product-id]");
         const quantityEl = productEl?.querySelector("[data-bf-qty]");
 
@@ -133,5 +168,28 @@ export class ProductUI {
                 }, 1500);
                 console.error("[Blink] Add to cart failed:", err);
             });
+    }
+
+    /**
+     * Sets loading state on the given button.
+     * @param {HTMLElement} button
+     * @param {boolean} isLoading
+     */
+    setButtonLoading(button, isLoading) {
+        if (isLoading) {
+            button.disabled = true;
+            button.classList.add("bf-loading");
+            if (!button.dataset.originalText) {
+                button.dataset.originalText = button.innerHTML;
+            }
+            button.innerHTML = this._loaderSVG;
+        } else {
+            button.disabled = false;
+            button.classList.remove("bf-loading");
+            if (button.dataset.originalText) {
+                button.innerHTML = button.dataset.originalText;
+                delete button.dataset.originalText;
+            }
+        }
     }
 }

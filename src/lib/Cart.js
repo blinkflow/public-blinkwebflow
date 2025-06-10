@@ -1,6 +1,14 @@
 import { Cache, MoneyFormatter } from "./utils.js";
 
+/**
+ * Handles cart operations and state management.
+ */
 export class Cart {
+    /**
+     * @param {object} shopifyClient - Shopify client instance.
+     * @param {object} productManager - Product manager instance.
+     * @param {string} [storageKey="blink_cart"] - Key for localStorage.
+     */
     constructor(shopifyClient, productManager, storageKey = "blink_cart") {
         this.shopifyClient = shopifyClient;
         this.productManager = productManager;
@@ -13,6 +21,10 @@ export class Cart {
         this.onCartChange = null; // callback for UI updates
     }
 
+    /**
+     * Initializes the cart, loading from cache if available.
+     * @returns {Promise<void>}
+     */
     async init() {
         await this._fetchShopMoneyFormat();
         try {
@@ -31,6 +43,11 @@ export class Cart {
         }
     }
 
+    /**
+     * Fetches and sets the shop's money format.
+     * @returns {Promise<void>}
+     * @private
+     */
     async _fetchShopMoneyFormat() {
         // Try to load from localStorage first
         const cached = Cache.get("blink_shop_info");
@@ -69,6 +86,13 @@ export class Cart {
         }
     }
 
+    /**
+     * Adds a variant to the cart.
+     * @param {object} params
+     * @param {string} params.variantId - The variant ID.
+     * @param {number} [params.quantity=1] - Quantity to add.
+     * @returns {Promise<object>} The updated cart.
+     */
     async addToCart({ variantId, quantity = 1 }) {
         if (!this._cart) {
             const cart = await this._createCart(variantId, quantity);
@@ -82,6 +106,13 @@ export class Cart {
         }
     }
 
+    /**
+     * Creates a new cart with the given variant and quantity.
+     * @param {string} variantId
+     * @param {number} quantity
+     * @returns {Promise<object>} The created cart.
+     * @private
+     */
     async _createCart(variantId, quantity) {
         const query = `
             mutation cartCreate($input: CartInput!) {
@@ -119,6 +150,13 @@ export class Cart {
         return response.data.cartCreate.cart;
     }
 
+    /**
+     * Adds a variant to an existing cart.
+     * @param {string} variantId
+     * @param {number} quantity
+     * @returns {Promise<object>} The updated cart.
+     * @private
+     */
     async _addToExistingCart(variantId, quantity) {
         const query = `
             mutation cartLinesAdd($cartId: ID!, $lines: [CartLineInput!]!) {
@@ -154,6 +192,11 @@ export class Cart {
         return res.data.cartLinesAdd.cart;
     }
 
+    /**
+     * Fetches the cart by ID.
+     * @param {string} cartId
+     * @returns {Promise<object|null>} The cart object or null.
+     */
     async fetchCart(cartId) {
         const query = `
             query getCart($cartId: ID!) {
@@ -251,6 +294,10 @@ export class Cart {
         return res.data.cart;
     }
 
+    /**
+     * Clears all items from the cart.
+     * @returns {Promise<void>}
+     */
     async clearCart() {
         if (
             this._cart &&
@@ -276,6 +323,11 @@ export class Cart {
         }
     }
 
+    /**
+     * Removes a line item from the cart.
+     * @param {string} lineId
+     * @returns {Promise<void>}
+     */
     async removeLineItem(lineId) {
         const query = `
         mutation cartLinesRemove($cartId: ID!, $lineIds: [ID!]!) {
@@ -289,6 +341,10 @@ export class Cart {
         await this.shopifyClient.executeQuery(query, variables);
     }
 
+    /**
+     * Refreshes the cart state from Shopify and updates cache.
+     * @returns {Promise<void>}
+     */
     async refreshCart() {
         this._cart = await this.fetchCart(this.cartId);
         Cache.set(this._cartStorageKey, this._cart, this._cartCacheTTL);

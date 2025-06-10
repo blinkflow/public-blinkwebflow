@@ -1,6 +1,12 @@
 import { MoneyFormatter } from "../utils.js";
 
+/**
+ * Handles rendering and UI interactions for the cart.
+ */
 export class CartUI {
+    /**
+     * @param {object} cart - Cart instance.
+     */
     constructor(cart) {
         this.cart = cart;
         this._templates = {};
@@ -8,6 +14,10 @@ export class CartUI {
         this.cart.onCartChange = () => this.renderCart();
     }
 
+    /**
+     * Initializes cart UI, sets up event listeners.
+     * @returns {Promise<void>}
+     */
     async init() {
         this._closeCartDrawer();
         this._setupCartTriggerButtons();
@@ -17,6 +27,9 @@ export class CartUI {
         // Listen for cart changes if needed (optional: use events or polling)
     }
 
+    /**
+     * Renders the cart contents in the UI.
+     */
     renderCart() {
         const cartData = this.cart._cart;
         document.querySelectorAll("[data-bf-cart]").forEach((cart) => {
@@ -102,6 +115,12 @@ export class CartUI {
         });
     }
 
+    /**
+     * Updates cart subtotal and total elements.
+     * @param {HTMLElement} subTotalElem
+     * @param {HTMLElement} totalElem
+     * @param {object} cartData
+     */
     updateCartTotals(subTotalElem, totalElem, cartData) {
         if (!cartData) return;
         if (!cartData.estimatedCost) {
@@ -129,6 +148,10 @@ export class CartUI {
         }
     }
 
+    /**
+     * Sets up buttons that open/close the cart drawer.
+     * @private
+     */
     _setupCartTriggerButtons() {
         const triggers = document.querySelectorAll("[data-bf-cart-trigger]");
         triggers.forEach((button) => {
@@ -146,6 +169,11 @@ export class CartUI {
         });
     }
 
+    /**
+     * Closes the cart drawer.
+     * @param {HTMLElement} [cartDrawer]
+     * @private
+     */
     _closeCartDrawer(cartDrawer) {
         const drawer = cartDrawer
             ? cartDrawer
@@ -156,6 +184,11 @@ export class CartUI {
         }
     }
 
+    /**
+     * Opens the cart drawer.
+     * @param {HTMLElement} [cartDrawer]
+     * @private
+     */
     _openCartDrawer(cartDrawer) {
         const drawer = cartDrawer
             ? cartDrawer
@@ -166,6 +199,10 @@ export class CartUI {
         }
     }
 
+    /**
+     * Sets up checkout buttons to redirect to checkout URL.
+     * @private
+     */
     _setupCheckoutButtons() {
         const checkoutButtons = document.querySelectorAll("[data-bf-checkout]");
         checkoutButtons.forEach((button) => {
@@ -180,6 +217,10 @@ export class CartUI {
         });
     }
 
+    /**
+     * Sets up clear cart buttons to empty the cart.
+     * @private
+     */
     _setupClearCartButtons() {
         const clearButtons = document.querySelectorAll("[data-bf-clear-cart]");
         clearButtons.forEach((button) => {

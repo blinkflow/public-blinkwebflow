@@ -5,27 +5,16 @@ import { Cache } from "./utils.js";
 import { CartUI } from "./ui/CartUI.js";
 import { ProductUI } from "./ui/ProductUI.js";
 
+/**
+ * Main entry point for Blink, initializes all modules and state.
+ */
 export class GlobalBlink {
+    /**
+     * @param {object} [config={}] - Optional configuration object.
+     */
     constructor(config = {}) {
         if (GlobalBlink._instance) return GlobalBlink._instance;
         GlobalBlink._instance = this;
-
-        this._loaderSVG = `
-        <svg class="bf-loader-svg" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="12" cy="12" r="10" stroke-opacity="0.2"/>
-        <path d="M22 12a10 10 0 0 1-10 10" />
-        <style>
-            .bf-loader-svg { animation: bf-rotate 1s linear infinite; vertical-align: middle;}
-            @keyframes bf-rotate { 100% { transform: rotate(360deg); } }
-        </style>
-        </svg>
-        `;
-
-        this._checkSVG = `
-        <svg class="bf-check-svg" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M20 6 9 17l-5-5"/>
-        </svg>
-        `;
 
         const token = config.shopify?.token || this._getTokenFromDOM();
         const storeDomain =
@@ -46,6 +35,7 @@ export class GlobalBlink {
         this.productUI = new ProductUI(
             this.productManager,
             this.cart,
+            this.cartUI,
             () => this.cart._moneyFormat // pass getter for moneyFormat
         );
 
@@ -57,6 +47,11 @@ export class GlobalBlink {
         this._init();
     }
 
+    /**
+     * Initializes all modules and fetches shop info.
+     * @private
+     * @returns {Promise<void>}
+     */
     async _init() {
         await this.cart.init();
         await this.cartUI.init();
@@ -101,6 +96,11 @@ export class GlobalBlink {
         }
     }
 
+    /**
+     * Gets the Shopify token from the DOM.
+     * @private
+     * @returns {string|null}
+     */
     _getTokenFromDOM() {
         const el = document.querySelector(
             'script[data-name="blink-main-script"]'
@@ -108,6 +108,11 @@ export class GlobalBlink {
         return el?.getAttribute("data-store-token") ?? null;
     }
 
+    /**
+     * Gets the Shopify store domain from the DOM.
+     * @private
+     * @returns {string|null}
+     */
     _getStoreDomainFromDOM() {
         const el = document.querySelector(
             'script[data-name="blink-main-script"]'

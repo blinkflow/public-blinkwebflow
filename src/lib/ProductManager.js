@@ -1,6 +1,12 @@
 import { Cache } from "./utils.js";
 
+/**
+ * Manages product data fetching and caching.
+ */
 export class ProductManager {
+    /**
+     * @param {object} shopifyClient - Shopify client instance.
+     */
     constructor(shopifyClient) {
         this.shopifyClient = shopifyClient;
         this.currentProducts = {};
@@ -8,6 +14,11 @@ export class ProductManager {
         this._productCacheTTL = 1000 * 60 * 10; // 10 minutes
     }
 
+    /**
+     * Fetches all products on the page or by given IDs.
+     * @param {string[]|null} [productIds=null] - Optional array of product IDs.
+     * @returns {Promise<void>}
+     */
     async fetchAllProductsOnPage(productIds = null) {
         // Accepts optional productIds for UI to control which products to fetch
         const ids =
@@ -50,6 +61,11 @@ export class ProductManager {
         );
     }
 
+    /**
+     * Fetches a product by ID from Shopify and stores it.
+     * @param {string} productId
+     * @returns {Promise<object|null>} The product object or null.
+     */
     async fetchAndStoreProduct(productId) {
         const query = `
         query Products($id: ID!) @inContext(language: EN) {
