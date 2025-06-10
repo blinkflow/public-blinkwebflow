@@ -93,9 +93,8 @@ export class ProductUI {
 
     /**
      * Sets up add-to-cart buttons for all products.
-     * @param {function} openCartDrawer
      */
-    setupAddToCartButtons(openCartDrawer) {
+    setupAddToCartButtons() {
         const buttons = document.querySelectorAll("[data-bf-add-to-cart]");
 
         buttons.forEach((button) => {
@@ -159,7 +158,7 @@ export class ProductUI {
                 setTimeout(() => {
                     this.setButtonLoading(button, false);
                 }, 1500);
-                openCartDrawer();
+                this.cartUI.openCartDrawer();
             })
             .catch((err) => {
                 button.innerHTML = "Error";

@@ -19,7 +19,7 @@ export class CartUI {
      * @returns {Promise<void>}
      */
     async init() {
-        this._closeCartDrawer();
+        this.closeCartDrawer();
         this._setupCartTriggerButtons();
         this._setupCheckoutButtons();
         this._setupClearCartButtons();
@@ -160,9 +160,9 @@ export class CartUI {
                 if (cartDrawer) {
                     const isOpen = cartDrawer.classList.contains("open");
                     if (isOpen) {
-                        this._closeCartDrawer(cartDrawer);
+                        this.closeCartDrawer(cartDrawer);
                     } else {
-                        this._openCartDrawer(cartDrawer);
+                        this.openCartDrawer(cartDrawer);
                     }
                 }
             });
@@ -174,7 +174,7 @@ export class CartUI {
      * @param {HTMLElement} [cartDrawer]
      * @private
      */
-    _closeCartDrawer(cartDrawer) {
+    closeCartDrawer(cartDrawer) {
         const drawer = cartDrawer
             ? cartDrawer
             : document.querySelector("[data-bf-cart-drawer]");
@@ -189,7 +189,7 @@ export class CartUI {
      * @param {HTMLElement} [cartDrawer]
      * @private
      */
-    _openCartDrawer(cartDrawer) {
+    openCartDrawer(cartDrawer) {
         const drawer = cartDrawer
             ? cartDrawer
             : document.querySelector("[data-bf-cart-drawer]");
