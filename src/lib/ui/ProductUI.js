@@ -155,7 +155,7 @@ export class ProductUI {
         this.cart
             .addToCart({ variantId, quantity })
             .then(() => {
-                button.innerHTML = checkSVG;
+                button.innerHTML = this._checkSVG;
                 setTimeout(() => {
                     this.setButtonLoading(button, false);
                 }, 1500);
