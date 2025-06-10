@@ -1,0 +1,29 @@
+{
+    "name": "public-blinkwebflow",
+    "version": "1.0.0",
+    "description": "Public files should be placed in this repo only.",
+    "main": "bk.js",
+    "scripts": {
+        "build": "webpack"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/nikushx/public-blinkwebflow.git"
+    },
+    "keywords": [],
+    "author": "",
+    "license": "ISC",
+    "type": "module",
+    "bugs": {
+        "url": "https://github.com/nikushx/public-blinkwebflow/issues"
+    },
+    "homepage": "https://github.com/nikushx/public-blinkwebflow#readme",
+    "devDependencies": {
+        "@babel/core": "^7.27.4",
+        "@babel/preset-env": "^7.27.2",
+        "babel-loader": "^10.0.0",
+        "terser-webpack-plugin": "^5.3.14",
+        "webpack": "^5.99.9",
+        "webpack-cli": "^6.0.1"
+    }
+}
