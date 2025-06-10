@@ -151,20 +151,20 @@ export class ProductUI {
             return;
         }
 
-        setButtonLoading(button, true);
+        this.setButtonLoading(button, true);
         this.cart
             .addToCart({ variantId, quantity })
             .then(() => {
                 button.innerHTML = checkSVG;
                 setTimeout(() => {
-                    setButtonLoading(button, false);
+                    this.setButtonLoading(button, false);
                 }, 1500);
                 openCartDrawer();
             })
             .catch((err) => {
                 button.innerHTML = "Error";
                 setTimeout(() => {
-                    setButtonLoading(button, false);
+                    this.setButtonLoading(button, false);
                 }, 1500);
                 console.error("[Blink] Add to cart failed:", err);
             });
