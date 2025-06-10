@@ -58,11 +58,6 @@ export class GlobalBlink {
     }
 
     async _init() {
-        this._closeCartDrawer();
-        // Remove: await this.productManager.fetchAllProductsOnPage();
-        // Remove: this._setupAddToCartButtons();
-        // Remove: this._renderProductPrices();
-
         await this.cart.init();
         await this.cartUI.init();
         await this.productUI.init();

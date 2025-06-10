@@ -9,6 +9,7 @@ export class CartUI {
     }
 
     async init() {
+        this._closeCartDrawer();
         this._setupCartTriggerButtons();
         this._setupCheckoutButtons();
         this._setupClearCartButtons();
