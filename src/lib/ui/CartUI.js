@@ -24,7 +24,6 @@ export class CartUI {
         this._setupCheckoutButtons();
         this._setupClearCartButtons();
         this.renderCart();
-        // Listen for cart changes if needed (optional: use events or polling)
     }
 
     /**
@@ -33,6 +32,12 @@ export class CartUI {
     renderCart() {
         const cartData = this.cart._cart;
         document.querySelectorAll("[data-bf-cart]").forEach((cart) => {
+            const cartItemsCountElem = cart.querySelector(
+                "[data-bf-cart-items-count]"
+            );
+
+            let cartItemsCount = 0;
+
             const container = cart.querySelector("[data-bf-line-items]");
             if (!container) return;
 
@@ -44,7 +49,9 @@ export class CartUI {
             }
             template.style.display = "none";
 
-            const emptyMessage = cart.querySelector("[data-bf-empty-cart-message]");
+            const emptyMessage = cart.querySelector(
+                "[data-bf-empty-cart-message]"
+            );
             if (emptyMessage) emptyMessage.style.display = "none";
 
             container.querySelectorAll("[data-bf-line-item]").forEach((el) => {
@@ -62,6 +69,7 @@ export class CartUI {
             }
 
             cartData.lines.edges.forEach((edge) => {
+                cartItemsCount += edge.node.quantity;
                 const line = edge.node;
                 const itemEl = template.cloneNode(true);
                 container.appendChild(itemEl);
@@ -77,13 +85,17 @@ export class CartUI {
                 if (titleEl)
                     titleEl.textContent = line.merchandise.product.title;
 
-                const optionEl = itemEl.querySelector("[data-bf-line-selected-option]");
+                const optionEl = itemEl.querySelector(
+                    "[data-bf-line-selected-option]"
+                );
                 if (optionEl) optionEl.textContent = line.merchandise.title;
 
                 const qtyEl = itemEl.querySelector("[data-bf-line-qty]");
                 if (qtyEl) qtyEl.textContent = line.quantity;
 
-                const perQtyEl = itemEl.querySelector("[data-bf-line-amount-per-qty]");
+                const perQtyEl = itemEl.querySelector(
+                    "[data-bf-line-amount-per-qty]"
+                );
                 if (perQtyEl && line.cost && line.cost.amountPerQuantity) {
                     perQtyEl.textContent = MoneyFormatter.format(
                         line.cost.amountPerQuantity.amount,
@@ -91,7 +103,9 @@ export class CartUI {
                         this.cart._moneyFormat
                     );
                 }
-                const totalEl = itemEl.querySelector("[data-bf-line-total-amount]");
+                const totalEl = itemEl.querySelector(
+                    "[data-bf-line-total-amount]"
+                );
                 if (totalEl && line.cost && line.cost.totalAmount) {
                     totalEl.textContent = MoneyFormatter.format(
                         line.cost.totalAmount.amount,
@@ -100,7 +114,9 @@ export class CartUI {
                     );
                 }
 
-                const removeBtn = itemEl.querySelector("[data-bf-remove-line-item]");
+                const removeBtn = itemEl.querySelector(
+                    "[data-bf-remove-line-item]"
+                );
                 if (removeBtn) {
                     removeBtn.onclick = async (e) => {
                         e.preventDefault();
@@ -110,6 +126,15 @@ export class CartUI {
                     };
                 }
             });
+
+            if (cartItemsCountElem) {
+                cartItemsCountElem.textContent = `(${cartItemsCount})`;
+                if (cartItemsCount > 0) {
+                    cartItemsCountElem.style.display = "";
+                } else {
+                    cartItemsCountElem.style.display = "none";
+                }
+            }
 
             if (cartData.lines.edges.length > 1) template.style.display = "";
         });
@@ -122,15 +147,20 @@ export class CartUI {
      * @param {object} cartData
      */
     updateCartTotals(subTotalElem, totalElem, cartData) {
-        if (!cartData) return;
-        if (!cartData.estimatedCost) {
-            if (subTotalElem) subTotalElem.textContent = MoneyFormatter.format(0, "USD");
-            if (totalElem) totalElem.textContent = MoneyFormatter.format(0, "USD");
+        if (!cartData || !cartData?.estimatedCost) {
+            if (subTotalElem)
+                subTotalElem.textContent = MoneyFormatter.format(0, "USD");
+            if (totalElem)
+                totalElem.textContent = MoneyFormatter.format(0, "USD");
+            return;
         }
+
         const subtotal = cartData?.estimatedCost?.subtotalAmount?.amount || 0;
-        const subtotalCurrency = cartData?.estimatedCost?.subtotalAmount?.currencyCode || "USD";
+        const subtotalCurrency =
+            cartData?.estimatedCost?.subtotalAmount?.currencyCode || "USD";
         const total = cartData?.estimatedCost?.totalAmount?.amount || 0;
-        const totalCurrency = cartData?.estimatedCost?.totalAmount?.currencyCode || "USD";
+        const totalCurrency =
+            cartData?.estimatedCost?.totalAmount?.currencyCode || "USD";
 
         if (subTotalElem) {
             subTotalElem.textContent = MoneyFormatter.format(
@@ -153,19 +183,19 @@ export class CartUI {
      * @private
      */
     _setupCartTriggerButtons() {
-        const triggers = document.querySelectorAll("[data-bf-cart-trigger]");
-        triggers.forEach((button) => {
-            button.addEventListener("click", () => {
-                const cartDrawer = document.querySelector("[data-bf-cart-drawer]");
-                if (cartDrawer) {
-                    const isOpen = cartDrawer.classList.contains("open");
-                    if (isOpen) {
-                        this.closeCartDrawer(cartDrawer);
-                    } else {
-                        this.openCartDrawer(cartDrawer);
-                    }
-                }
-            });
+        const cartOpenButtons = document.querySelectorAll(
+            "[data-bf-cart-drawer-open]"
+        );
+        const cartCloseButtons = document.querySelectorAll(
+            "[data-bf-cart-drawer-close]"
+        );
+
+        cartOpenButtons.forEach((button) => {
+            button.addEventListener("click", () => this.openCartDrawer());
+        });
+
+        cartCloseButtons.forEach((button) => {
+            button.addEventListener("click", () => this.closeCartDrawer());
         });
     }
 
