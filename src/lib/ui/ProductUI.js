@@ -31,16 +31,155 @@ export class ProductUI {
         <path d="M20 6 9 17l-5-5"/>
         </svg>
         `;
+
+        this.templates = {}; // Will be filled at runtime from DOM
     }
 
     /**
-     * Initializes product UI, fetches products, renders prices, sets up buttons.
+     * Initializes product UI, fetches products, renders prices, sets up buttons, and renders galleries.
      * @returns {Promise<void>}
      */
     async init() {
         await this.productManager.fetchAllProductsOnPage();
         this.renderProductPrices();
         this.setupAddToCartButtons();
+        this.renderProductGalleries();
+    }
+
+    /**
+     * Renders product image galleries, thumbnails, and slider controls.
+     * Fetches templates from DOM.
+     */
+    renderProductGalleries() {
+        document
+            .querySelectorAll("[data-bf-product-gallery]")
+            .forEach((galleryEl) => {
+                const productEl = galleryEl.closest("[data-bf-product-id]");
+                if (!productEl) return;
+                const productId = productEl.getAttribute("data-bf-product-id");
+                const product = this.productManager.currentProducts[productId];
+                if (!product || !product.images?.edges?.length) return;
+
+                const images = product.images.edges.map((edge) => edge.node);
+                let activeIndex = 0;
+
+                // Get slider and thumbnails wrapper
+                const sliderEl = galleryEl.querySelector(
+                    "[data-bf-product-image-slider]"
+                );
+                const thumbnailsWrapper = galleryEl.querySelector(
+                    "[data-bf-thumbnail-wrapper]"
+                );
+                if (!sliderEl || !thumbnailsWrapper) return;
+
+                // Fetch templates from DOM if not already
+                if (!this.templates.activeImage) {
+                    const activeImageTemplate = sliderEl.querySelector(
+                        "[data-bf-product-image]"
+                    );
+                    if (activeImageTemplate) {
+                        this.templates.activeImage =
+                            activeImageTemplate.cloneNode(true);
+                        this.templates.activeImage.style.display = "none";
+                    }
+                }
+                if (!this.templates.thumbnailImage) {
+                    const thumbTemplate = thumbnailsWrapper.querySelector(
+                        "[data-bf-thumbnail-image]"
+                    );
+                    if (thumbTemplate) {
+                        this.templates.thumbnailImage =
+                            thumbTemplate.cloneNode(true);
+                        this.templates.thumbnailImage.style.display = "none";
+                    }
+                }
+
+                // Remove all but template in slider and thumbnails
+                sliderEl
+                    .querySelectorAll("[data-bf-product-image]")
+                    .forEach((el) => {
+                        if (
+                            this.templates.activeImage &&
+                            el !== this.templates.activeImage
+                        )
+                            el.remove();
+                    });
+                thumbnailsWrapper
+                    .querySelectorAll("[data-bf-thumbnail-image]")
+                    .forEach((el) => {
+                        if (
+                            this.templates.thumbnailImage &&
+                            el !== this.templates.thumbnailImage
+                        )
+                            el.remove();
+                    });
+
+                // Render all images in slider ONCE
+                const sliderImages = [];
+                images.forEach((img, idx) => {
+                    let imgEl = this.templates.activeImage
+                        ? this.templates.activeImage.cloneNode(true)
+                        : document.createElement("img");
+                    imgEl.setAttribute("data-bf-product-image", "");
+                    imgEl.src = img.url;
+                    imgEl.alt = img.altText || product.title || "";
+                    imgEl.style.display = idx === activeIndex ? "" : "none";
+                    imgEl.classList.toggle("active", idx === activeIndex);
+                    sliderEl.appendChild(imgEl);
+                    sliderImages.push(imgEl);
+                });
+
+                // Render all thumbnails ONCE
+                const thumbnailImages = [];
+                images.forEach((img, idx) => {
+                    let thumbEl = this.templates.thumbnailImage
+                        ? this.templates.thumbnailImage.cloneNode(true)
+                        : document.createElement("img");
+                    thumbEl.setAttribute("data-bf-thumbnail-image", "");
+                    thumbEl.src = img.url;
+                    thumbEl.alt = img.altText || product.title || "";
+                    thumbEl.setAttribute("data-index", idx);
+                    thumbEl.style.display = "";
+                    thumbEl.classList.toggle("active", idx === activeIndex);
+                    thumbEl.onclick = () => {
+                        setActiveIndex(idx);
+                    };
+                    thumbnailsWrapper.appendChild(thumbEl);
+                    thumbnailImages.push(thumbEl);
+                });
+
+                // Function to update active image and thumbnail
+                function setActiveIndex(idx) {
+                    activeIndex = idx;
+                    sliderImages.forEach((imgEl, i) => {
+                        imgEl.style.display = i === activeIndex ? "" : "none";
+                        imgEl.classList.toggle("active", i === activeIndex);
+                    });
+                    thumbnailImages.forEach((thumbEl, i) => {
+                        thumbEl.classList.toggle("active", i === activeIndex);
+                    });
+                }
+
+                // Setup arrow navigation using DOM elements
+                const arrowLeft = sliderEl.querySelector(
+                    "[data-bf-image-slider-arrow-left]"
+                );
+                const arrowRight = sliderEl.querySelector(
+                    "[data-bf-image-slider-arrow-right]"
+                );
+                if (arrowLeft) {
+                    arrowLeft.onclick = () => {
+                        setActiveIndex(
+                            (activeIndex - 1 + images.length) % images.length
+                        );
+                    };
+                }
+                if (arrowRight) {
+                    arrowRight.onclick = () => {
+                        setActiveIndex((activeIndex + 1) % images.length);
+                    };
+                }
+            });
     }
 
     /**
