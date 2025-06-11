@@ -72,32 +72,21 @@ export class ProductUI {
                 );
                 if (!sliderEl && !thumbnailsWrapper) return;
 
-                // Fetch templates from DOM if not already
-                if (!this.templates.activeImage) {
-                    const activeImageTemplate = sliderEl.querySelector(
-                        "[data-bf-product-image]"
-                    );
-                    if (activeImageTemplate) {
-                        this.templates.activeImage =
-                            activeImageTemplate.cloneNode(true);
-                        this.templates.activeImage.style.display = "none";
-                    }
-                }
-                if (!this.templates.thumbnailImage) {
-                    const thumbTemplate = thumbnailsWrapper.querySelector(
-                        "[data-bf-thumbnail-image]"
-                    );
-                    if (thumbTemplate) {
-                        this.templates.thumbnailImage =
-                            thumbTemplate.cloneNode(true);
-                        this.templates.thumbnailImage.style.display = "none";
-                    }
-                }
-
                 const sliderImages = [];
                 const thumbnailImages = [];
 
                 if (sliderEl) {
+                    // Fetch templates from DOM if not already
+                    if (!this.templates.activeImage) {
+                        const activeImageTemplate = sliderEl.querySelector(
+                            "[data-bf-product-image]"
+                        );
+                        if (activeImageTemplate) {
+                            this.templates.activeImage =
+                                activeImageTemplate.cloneNode(true);
+                            this.templates.activeImage.style.display = "none";
+                        }
+                    }
                     // Remove all but template in slider
                     sliderEl
                         .querySelectorAll("[data-bf-product-image]")
@@ -126,6 +115,18 @@ export class ProductUI {
                 }
 
                 if (thumbnailsWrapper) {
+                    if (!this.templates.thumbnailImage) {
+                        const thumbTemplate = thumbnailsWrapper.querySelector(
+                            "[data-bf-thumbnail-image]"
+                        );
+                        if (thumbTemplate) {
+                            this.templates.thumbnailImage =
+                                thumbTemplate.cloneNode(true);
+                            this.templates.thumbnailImage.style.display =
+                                "none";
+                        }
+                    }
+
                     // Remove all but template in thumbnails wrapper
                     thumbnailsWrapper
                         .querySelectorAll("[data-bf-thumbnail-image]")
