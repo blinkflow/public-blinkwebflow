@@ -41,7 +41,7 @@ export class ProductUI {
      */
     async init() {
         await this.productManager.fetchAllProductsOnPage();
-        this.renderProductPrices();
+        this.renderProductDetails();
         this.setupAddToCartButtons();
         this.renderProductGalleries();
     }
@@ -58,7 +58,7 @@ export class ProductUI {
                 if (!productEl) return;
                 const productId = productEl.getAttribute("data-bf-product-id");
                 const product = this.productManager.currentProducts[productId];
-                if (!product || !product.images?.edges?.length) return;
+                if (!product || !product.images) return;
 
                 const images = product.images.edges.map((edge) => edge.node);
                 let activeIndex = 0;
@@ -121,7 +121,7 @@ export class ProductUI {
                         ? this.templates.activeImage.cloneNode(true)
                         : document.createElement("img");
                     imgEl.setAttribute("data-bf-product-image", "");
-                    imgEl.src = img.url;
+                    imgEl.src = img.src;
                     imgEl.alt = img.altText || product.title || "";
                     imgEl.style.display = idx === activeIndex ? "" : "none";
                     imgEl.classList.toggle("active", idx === activeIndex);
@@ -136,7 +136,7 @@ export class ProductUI {
                         ? this.templates.thumbnailImage.cloneNode(true)
                         : document.createElement("img");
                     thumbEl.setAttribute("data-bf-thumbnail-image", "");
-                    thumbEl.src = img.url;
+                    thumbEl.src = img.src;
                     thumbEl.alt = img.altText || product.title || "";
                     thumbEl.setAttribute("data-index", idx);
                     thumbEl.style.display = "";
@@ -183,15 +183,27 @@ export class ProductUI {
     }
 
     /**
-     * Renders product prices and compare-at prices on the page.
+     * Renders product details: title, description, prices, and compare-at prices on the page.
      */
-    renderProductPrices() {
+    renderProductDetails() {
         document
             .querySelectorAll("[data-bf-product-id]")
             .forEach((productEl) => {
                 const productId = productEl.getAttribute("data-bf-product-id");
                 const product = this.productManager.currentProducts[productId];
                 if (!product) return;
+
+                // Render product title
+                const titleEl = productEl.querySelector("[data-bf-product-title]");
+                if (titleEl && product.title) {
+                    titleEl.textContent = product.title;
+                }
+
+                // Render product description
+                const descEl = productEl.querySelector("[data-bf-product-description]");
+                if (descEl && product.description) {
+                    descEl.textContent = product.description;
+                }
 
                 // Get first variant
                 const variant = product.variants?.edges?.[0]?.node;
