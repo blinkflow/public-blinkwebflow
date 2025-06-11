@@ -176,6 +176,12 @@ export class ProductUI {
                 const arrowRight = sliderEl.querySelector(
                     "[data-bf-image-slider-arrow-right]"
                 );
+                if(images.length <= 1) {
+                    if (arrowLeft) arrowLeft.style.display = "none";
+                    if (arrowRight) arrowRight.style.display = "none";
+                    return; // No need for arrows if only one image
+                }
+                
                 if (arrowLeft) {
                     arrowLeft.onclick = (e) => {
                         e.preventDefault();
