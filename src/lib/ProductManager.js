@@ -28,6 +28,12 @@ export class ProductManager {
                 .filter(Boolean);
         const uniqueIds = [...new Set(ids)];
 
+        // Map numeric IDs to Shopify GIDs
+        const idToGid = (id) => (id.startsWith("gid://shopify/Product/") ? id : `gid://shopify/Product/${id}`);
+        const gidToNumeric = (gid) => {
+            return gid.split("/").pop(); // Extract numeric ID from GID
+        };
+
         // Try to load from cache
         const cached = Cache.get(this._productCacheKey) || {};
         const idsToFetch = uniqueIds.filter((id) => !cached[id]);
@@ -41,24 +47,25 @@ export class ProductManager {
         await Promise.all(
             idsToFetch.map(async (id) => {
                 try {
-                    const product = await this.fetchAndStoreProduct(id);
+                    const gid = idToGid(id);
+                    const product = await this.fetchAndStoreProduct(gid);
                     if (product) {
-                        this.currentProducts[id] = product;
+                        // Store by numeric ID for UI lookup
+                        const numericId = gidToNumeric(product.id);
+                        this.currentProducts[numericId] = product;
                     }
                 } catch (err) {
-                    console.error(
-                        `[Blink] Failed to fetch product ${id}:`,
-                        err
-                    );
+                    console.error(`[Blink] Failed to fetch product ${id}:`, err);
                 }
             })
         );
 
-        Cache.set(
-            this._productCacheKey,
-            { ...cached, ...this.currentProducts },
-            this._productCacheTTL
-        );
+        // Merge cached and newly fetched products, always keyed by numeric ID
+        const mergedProducts = { ...cached };
+        for (const id in this.currentProducts) {
+            mergedProducts[id] = this.currentProducts[id];
+        }
+        Cache.set(this._productCacheKey, mergedProducts, this._productCacheTTL);
     }
 
     /**

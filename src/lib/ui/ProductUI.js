@@ -16,7 +16,7 @@ export class ProductUI {
         this.cartUI = cartUI;
         this.getMoneyFormat = moneyFormatGetter; // function to get moneyFormat
         this._loaderSVG = `
-        <svg class="bf-loader-svg" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <svg class="bf-loader-svg" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <circle cx="12" cy="12" r="10" stroke-opacity="0.2"/>
         <path d="M22 12a10 10 0 0 1-10 10" />
         <style>
