@@ -199,7 +199,7 @@ export class ProductUI {
      */
     selectOptionValue(element, optionValue, optionName, product, updateAvailability = true) {
         const productEl = element.closest("[data-bf-product-id]");
-        const productId = product.id;
+        const productId = productEl.getAttribute("data-bf-product-id");
 
         // Remove selected class from siblings
         const container = element.closest("[data-bf-product-option]");
