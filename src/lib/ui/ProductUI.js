@@ -45,13 +45,81 @@ export class ProductUI {
         this.renderProductDetails();
         this.renderProductGalleries();
         this.setupProductOptions();
+        this.handleUrlVariantSelection();
         this.setupAddToCartButtons();
+    }
+
+    /**
+     * Handles variant selection from URL query parameter.
+     */
+    handleUrlVariantSelection() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const variantId = urlParams.get("variant");
+
+        if (!variantId) return;
+
+        // Find the product that contains this variant
+        for (const [productId, product] of Object.entries(this.productManager.currentProducts)) {
+            const variantEdge = product.variants?.edges?.find(
+                (edge) => edge.node.id === variantId || edge.node.id === `gid://shopify/ProductVariant/${variantId}`
+            );
+
+            if (variantEdge) {
+                this.selectVariantFromUrl(productId, variantEdge.node);
+                break;
+            }
+        }
+    }
+
+    /**
+     * Selects a variant based on URL parameter.
+     * @param {string} productId
+     * @param {object} variant
+     */
+    selectVariantFromUrl(productId, variant) {
+        const productEl = document.querySelector(`[data-bf-product-id="${productId}"]`);
+        if (!productEl) return;
+
+        const product = this.productManager.currentProducts[productId];
+        if (!product) return;
+
+        // Clear existing selections for this product
+        this.selectedVariants.set(productId, new Map());
+
+        // Select options based on variant's selectedOptions
+        variant.selectedOptions.forEach((option) => {
+            this.selectedVariants.get(productId).set(option.name, option.value);
+
+            // Find and select the corresponding option value element
+            const optionContainer = productEl.querySelector(`[data-bf-product-option-name="${option.name}"]`);
+            if (optionContainer) {
+                // Remove selected class from all values in this option
+                optionContainer.querySelectorAll("[data-bf-product-option-value]").forEach((el) => {
+                    el.classList.remove("bf-selected");
+                });
+
+                // Add selected class to the matching value
+                const valueElement = optionContainer.querySelector(`[data-option-value="${option.value}"]`);
+                if (valueElement) {
+                    valueElement.classList.add("bf-selected");
+                }
+            }
+        });
+
+        // Update product display with the selected variant
+        this.updateProductDisplay(productEl, product, variant);
+
+        // Update availability of other options
+        this.updateOptionAvailability(productEl, product);
     }
 
     /**
      * Sets up product options for all products on the page.
      */
     setupProductOptions() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const hasUrlVariant = urlParams.has("variant");
+
         document.querySelectorAll("[data-bf-product-option]").forEach((container) => {
             const productEl = container.closest("[data-bf-product-id]");
             if (!productEl) return;
@@ -62,7 +130,7 @@ export class ProductUI {
 
             const optionName = container.getAttribute("data-bf-product-option-name");
             if (optionName && optionName !== "{{ Connect Your Shopify Product Option Name }}") {
-                this.renderProductOption(container, product, optionName);
+                this.renderProductOption(container, product, optionName, hasUrlVariant);
             } else {
                 container.style.display = "none"; // Hide if no valid option name
             }
@@ -83,8 +151,9 @@ export class ProductUI {
      * @param {HTMLElement} container
      * @param {object} product
      * @param {string} optionName
+     * @param {boolean} hasUrlVariant - Whether URL contains variant parameter
      */
-    renderProductOption(container, product, optionName) {
+    renderProductOption(container, product, optionName, hasUrlVariant = false) {
         const option = product.options?.find((opt) => opt.name.toLowerCase() === optionName.toLowerCase());
         if (!option) return;
 
@@ -118,8 +187,8 @@ export class ProductUI {
             const valueElement = this.createOptionValueElement(templateClone, optionValue, option.name, product);
             valuesContainer.appendChild(valueElement);
 
-            // Auto-select first option value
-            if (index === 0) {
+            // Auto-select first option value only if no URL variant is present
+            if (index === 0 && !hasUrlVariant) {
                 this.selectOptionValue(valueElement, optionValue, option.name, product, false);
             }
         });
@@ -219,6 +288,9 @@ export class ProductUI {
         // Find matching variant
         const selectedVariant = this.findMatchingVariant(product, this.selectedVariants.get(productId));
 
+        // Update URL with variant parameter
+        this.updateUrlWithVariant(selectedVariant);
+
         // Update product display
         this.updateProductDisplay(productEl, product, selectedVariant);
 
@@ -226,6 +298,20 @@ export class ProductUI {
         if (updateAvailability) {
             this.updateOptionAvailability(productEl, product);
         }
+    }
+
+    /**
+     * Updates the URL with the selected variant ID.
+     * @param {object|null} variant
+     */
+    updateUrlWithVariant(variant) {
+        if (!variant) return;
+
+        const url = new URL(window.location);
+        const numericVariantId = variant.id.split("/").pop(); // Extract numeric ID from GID
+
+        url.searchParams.set("variant", numericVariantId);
+        window.history.replaceState({}, "", url);
     }
 
     /**
@@ -527,16 +613,8 @@ export class ProductUI {
             if (productEl) {
                 const productId = productEl.getAttribute("data-bf-product-id");
                 const product = this.productManager.currentProducts[productId];
-                // Get selected variant or default to first variant
-                let variant = null;
-                const selectedOptions = this.selectedVariants.get(productId);
-                if (selectedOptions && selectedOptions.size > 0) {
-                    variant = this.findMatchingVariant(product, selectedOptions);
-                }
-
-                if (!variant) {
-                    variant = product?.variants?.edges?.[0]?.node;
-                }
+                // Get variant from URL first, then selected variant, then default to first variant
+                let variant = this.getVariantForProduct(productId, product);
 
                 if (!variant || !variant.availableForSale) {
                     button.disabled = true;
@@ -549,6 +627,43 @@ export class ProductUI {
                 this.handleAddToCart(button);
             });
         });
+    }
+
+    /**
+     * Gets the appropriate variant for a product (URL variant, selected variant, or default).
+     * @param {string} productId
+     * @param {object} product
+     * @returns {object|null}
+     */
+    getVariantForProduct(productId, product) {
+        if (!product) return null;
+
+        // First check for URL variant
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlVariantId = urlParams.get("variant");
+
+        if (urlVariantId) {
+            const urlVariant = product.variants?.edges?.find(
+                (edge) =>
+                    edge.node.id === urlVariantId || edge.node.id === `gid://shopify/ProductVariant/${urlVariantId}`
+            )?.node;
+
+            if (urlVariant) {
+                return urlVariant;
+            }
+        }
+
+        // Then check for selected variant
+        const selectedOptions = this.selectedVariants.get(productId);
+        if (selectedOptions && selectedOptions.size > 0) {
+            const selectedVariant = this.findMatchingVariant(product, selectedOptions);
+            if (selectedVariant) {
+                return selectedVariant;
+            }
+        }
+
+        // Finally default to first variant
+        return product?.variants?.edges?.[0]?.node || null;
     }
 
     /**
@@ -568,17 +683,8 @@ export class ProductUI {
             return;
         }
 
-        // Get selected variant or default to first variant
-        let variant = null;
-        const selectedOptions = this.selectedVariants.get(productId);
-        if (selectedOptions && selectedOptions.size > 0) {
-            variant = this.findMatchingVariant(product, selectedOptions);
-        }
-
-        if (!variant) {
-            variant = product?.variants?.edges?.[0]?.node;
-        }
-
+        // Get variant from URL first, then selected variant, then default to first variant
+        const variant = this.getVariantForProduct(productId, product);
         const variantId = variant?.id;
 
         if (!variant || !variant.availableForSale) {
