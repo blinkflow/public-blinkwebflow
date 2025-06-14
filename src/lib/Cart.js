@@ -32,10 +32,7 @@ export class Cart {
             if (cachedCart) {
                 this._cart = cachedCart;
                 this.cartId = this._cart.id;
-                console.info(
-                    "[Blink] Cart loaded from localStorage:",
-                    this._cart
-                );
+                console.info("[Blink] Cart loaded from localStorage:", this._cart);
             }
         } catch (err) {
             console.warn("[Blink] Invalid or expired cart, resetting...");
@@ -54,9 +51,7 @@ export class Cart {
         if (cached) {
             try {
                 const info = cached;
-                this._moneyFormat =
-                    info.moneyFormat || "{{amount}}{{currency_code}}";
-                // Optionally, you could also set shopName here if needed
+                this._moneyFormat = info.moneyFormat || "{{amount}}{{currency_code}}";
                 return;
             } catch (e) {
                 // Ignore and fetch fresh
@@ -71,8 +66,7 @@ export class Cart {
         }
         `;
         const res = await this.shopifyClient.executeQuery(query);
-        this._moneyFormat =
-            res?.data?.shop?.moneyFormat || "{{amount}}{{currency_code}}";
+        this._moneyFormat = res?.data?.shop?.moneyFormat || "{{amount}}{{currency_code}}";
         // Cache shop info for later use
         if (res?.data?.shop) {
             Cache.set(
@@ -137,15 +131,10 @@ export class Cart {
                 ],
             },
         };
-        const response = await this.shopifyClient.executeQuery(
-            query,
-            variables
-        );
+        const response = await this.shopifyClient.executeQuery(query, variables);
         if (response.userErrors && response.userErrors.length > 0) {
             console.error("[Blink] Shopify user errors:", response.userErrors);
-            throw new Error(
-                "Failed to create cart: " + response.userErrors[0].message
-            );
+            throw new Error("Failed to create cart: " + response.userErrors[0].message);
         }
         return response.data.cartCreate.cart;
     }
@@ -176,18 +165,9 @@ export class Cart {
             lines: [{ quantity, merchandiseId: variantId }],
         };
         const res = await this.shopifyClient.executeQuery(query, variables);
-        if (
-            res.data.cartLinesAdd.userErrors &&
-            res.data.cartLinesAdd.userErrors.length > 0
-        ) {
-            console.error(
-                "[Blink] Shopify user errors:",
-                res.data.cartLinesAdd.userErrors
-            );
-            throw new Error(
-                "Failed to add to cart: " +
-                    res.data.cartLinesAdd.userErrors[0].message
-            );
+        if (res.data.cartLinesAdd.userErrors && res.data.cartLinesAdd.userErrors.length > 0) {
+            console.error("[Blink] Shopify user errors:", res.data.cartLinesAdd.userErrors);
+            throw new Error("Failed to add to cart: " + res.data.cartLinesAdd.userErrors[0].message);
         }
         return res.data.cartLinesAdd.cart;
     }
@@ -299,11 +279,7 @@ export class Cart {
      * @returns {Promise<void>}
      */
     async clearCart() {
-        if (
-            this._cart &&
-            this._cart.lines &&
-            this._cart.lines.edges.length > 0
-        ) {
+        if (this._cart && this._cart.lines && this._cart.lines.edges.length > 0) {
             const lineIds = this._cart.lines.edges.map((edge) => edge.node.id);
             if (lineIds.length > 0) {
                 const query = `

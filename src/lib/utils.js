@@ -52,14 +52,21 @@ export class MoneyFormatter {
      * @param {string} [moneyFormat="{{amount}}{{currency_code}}"]
      * @returns {string}
      */
-    static format(
-        amount,
-        currency,
-        moneyFormat = "{{amount}}{{currency_code}}"
-    ) {
+    static format(amount, currency, moneyFormat = "{{amount}}{{currency_code}}") {
         let formatted = moneyFormat || "${{amount}}";
         formatted = formatted.replace("{{amount}}", parseFloat(amount).toFixed(2));
         formatted = formatted.replace("{{currency_code}}", currency || "");
         return formatted;
     }
+}
+
+/**
+ * Dispatch Events with a simple utility function.
+ * @param {string} eventName - The name of the event to dispatch.
+ * @param {object} [detail] - Optional detail object to pass with the event.
+ */
+
+export function dispatchEvent(eventName, detail = {}) {
+    const event = new CustomEvent(eventName, { detail });
+    document.dispatchEvent(event);
 }
