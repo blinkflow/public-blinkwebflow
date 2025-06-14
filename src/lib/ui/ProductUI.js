@@ -368,11 +368,7 @@ export class ProductUI {
 
         // Update variant image if available
         if (variant.image) {
-            const mainImage = productEl.querySelector("[data-bf-product-image]");
-            if (mainImage) {
-                mainImage.src = variant.image.src;
-                mainImage.alt = variant.image.altText || product.title;
-            }
+            this.updateActiveImageByVariant(productEl, variant.image);
         }
 
         // Update add to cart button
@@ -386,6 +382,57 @@ export class ProductUI {
                 addToCartBtn.innerHTML = "Out of Stock";
             }
         }
+    }
+
+    /**
+     * Updates the active image in the gallery based on variant image.
+     * @param {HTMLElement} productEl
+     * @param {object} variantImage
+     */
+    updateActiveImageByVariant(productEl, variantImage) {
+        const galleryEl = productEl.querySelector("[data-bf-product-gallery]");
+        if (!galleryEl) return;
+
+        const sliderEl = galleryEl.querySelector("[data-bf-product-image-slider]");
+        const thumbnailsWrapper = galleryEl.querySelector("[data-bf-thumbnail-wrapper]");
+
+        if (!sliderEl && !thumbnailsWrapper) return;
+
+        // Find the index of the variant image in the gallery
+        const sliderImages = sliderEl ? Array.from(sliderEl.querySelectorAll("[data-bf-product-image]")) : [];
+        const thumbnailImages = thumbnailsWrapper
+            ? Array.from(thumbnailsWrapper.querySelectorAll("[data-bf-thumbnail-image]"))
+            : [];
+
+        // Find matching image by src
+        let targetIndex = -1;
+
+        if (sliderImages.length > 0) {
+            targetIndex = sliderImages.findIndex((img) => img.src === variantImage.src);
+        } else if (thumbnailImages.length > 0) {
+            targetIndex = thumbnailImages.findIndex((img) => img.src === variantImage.src);
+        }
+
+        if (targetIndex === -1) return; // Image not found in gallery
+
+        // Update active states
+        sliderImages.forEach((imgEl, index) => {
+            if (index === targetIndex) {
+                imgEl.style.display = "";
+                imgEl.classList.add("active");
+            } else {
+                imgEl.style.display = "none";
+                imgEl.classList.remove("active");
+            }
+        });
+
+        thumbnailImages.forEach((thumbEl, index) => {
+            if (index === targetIndex) {
+                thumbEl.classList.add("active");
+            } else {
+                thumbEl.classList.remove("active");
+            }
+        });
     }
 
     /**
