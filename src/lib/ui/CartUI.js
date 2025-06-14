@@ -60,6 +60,7 @@ export class CartUI {
 
             if (!cartData || !cartData.lines || !cartData.lines.edges.length) {
                 template.style.display = "none";
+                cartItemsCountElem.style.display = "none";
                 if (emptyMessage) emptyMessage.style.display = "";
                 return;
             }
