@@ -108,7 +108,6 @@ export class CartUI {
                     removeBtn.onclick = async (e) => {
                         e.preventDefault();
                         await this.cart.removeLineItem(line.id);
-                        await this.cart.refreshCart();
                         this.renderCart();
                     };
                 }
@@ -227,7 +226,6 @@ export class CartUI {
             button.addEventListener("click", async (e) => {
                 e.preventDefault();
                 await this.cart.clearCart();
-                await this.cart.refreshCart();
                 this.renderCart();
             });
         });

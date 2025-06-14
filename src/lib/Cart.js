@@ -315,6 +315,7 @@ export class Cart {
     `;
         const variables = { cartId: this.cartId, lineIds: [lineId] };
         await this.shopifyClient.executeQuery(query, variables);
+        await this.refreshCart();
     }
 
     /**

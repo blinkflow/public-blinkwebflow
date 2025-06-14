@@ -43,9 +43,9 @@ export class ProductUI {
     async init() {
         await this.productManager.fetchAllProductsOnPage();
         this.renderProductDetails();
+        this.renderProductGalleries();
         this.setupProductOptions();
         this.setupAddToCartButtons();
-        this.renderProductGalleries();
     }
 
     /**
@@ -102,6 +102,7 @@ export class ProductUI {
 
         // Get template from existing option value element
         const template = valuesContainer.querySelector("[data-bf-product-option-value]");
+        template.classList.remove("bf-selected", "bf-unavailable");
         if (!template) return;
 
         const templateClone = template.cloneNode(true);
@@ -526,7 +527,17 @@ export class ProductUI {
             if (productEl) {
                 const productId = productEl.getAttribute("data-bf-product-id");
                 const product = this.productManager.currentProducts[productId];
-                const variant = product?.variants?.edges?.[0]?.node;
+                // Get selected variant or default to first variant
+                let variant = null;
+                const selectedOptions = this.selectedVariants.get(productId);
+                if (selectedOptions && selectedOptions.size > 0) {
+                    variant = this.findMatchingVariant(product, selectedOptions);
+                }
+
+                if (!variant) {
+                    variant = product?.variants?.edges?.[0]?.node;
+                }
+
                 if (!variant || !variant.availableForSale) {
                     button.disabled = true;
                     button.innerHTML = "Out of stock";
