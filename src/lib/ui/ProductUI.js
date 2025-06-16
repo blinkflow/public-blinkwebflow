@@ -45,8 +45,22 @@ export class ProductUI {
         this.renderProductDetails();
         this.renderProductGalleries();
         this.setupProductOptions();
-        this.handleUrlVariantSelection();
+        if (this.isSingleProductPage()) {
+            this.handleUrlVariantSelection();
+        }
         this.setupAddToCartButtons();
+    }
+
+    /**
+     * Checks if current page is a single product page (domain.com/products/slug format).
+     * @returns {boolean}
+     */
+    isSingleProductPage() {
+        const pathname = window.location.pathname;
+
+        // Check if path matches /products/[slug] pattern
+        const productPagePattern = /^\/products\/[^\/]+\/?$/;
+        return productPagePattern.test(pathname);
     }
 
     /**
@@ -288,8 +302,10 @@ export class ProductUI {
         // Find matching variant
         const selectedVariant = this.findMatchingVariant(product, this.selectedVariants.get(productId));
 
-        // Update URL with variant parameter
-        this.updateUrlWithVariant(selectedVariant);
+        if (this.isSingleProductPage()) {
+            // Update URL with variant parameter
+            this.updateUrlWithVariant(selectedVariant);
+        }
 
         // Update product display
         this.updateProductDisplay(productEl, product, selectedVariant);
@@ -327,7 +343,7 @@ export class ProductUI {
             product.variants.edges.find((edge) => {
                 const variant = edge.node;
                 return variant.selectedOptions.every((option) => selectedOptions.get(option.name) === option.value);
-            })?.node || null
+            })?.node || product.variants.edges[0]?.node
         );
     }
 
