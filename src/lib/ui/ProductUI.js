@@ -624,44 +624,49 @@ export class ProductUI {
             if (!product) return;
 
             // Render product title
-            const titleEl = productEl.querySelector("[data-bf-product-title]");
+            const titleEls = productEl.querySelectorAll("[data-bf-product-title]");
 
-            if (titleEl) {
+            titleEls.forEach((titleEl) => {
                 titleEl.textContent = product.title ? product.title : "";
-            }
+            });
 
             // Render product description
-            const descEl = productEl.querySelector("[data-bf-product-description]");
-            if (descEl) {
+            const descEls = productEl.querySelectorAll("[data-bf-product-description]");
+
+            descEls.forEach((descEl) => {
                 descEl.innerHTML = product.descriptionHtml ? product.descriptionHtml : "";
-            }
+            });
 
             // Get first variant
             const variant = product.variants?.edges?.[0]?.node;
             if (!variant) return;
 
             // Render price
-            const priceEl = productEl.querySelector("[data-bf-product-price]");
-            if (priceEl && variant.price) {
-                priceEl.textContent = MoneyFormatter.format(
-                    variant.price.amount,
-                    variant.price.currencyCode,
-                    this.getMoneyFormat()
-                );
-            }
+            const priceEls = productEl.querySelectorAll("[data-bf-product-price]");
+            priceEls.forEach((priceEl) => {
+                if (variant.price) {
+                    priceEl.textContent = MoneyFormatter.format(
+                        variant.price.amount,
+                        variant.price.currencyCode,
+                        this.getMoneyFormat()
+                    );
+                }
+            });
 
             // Render compare at price
-            const compareAtEl = productEl.querySelector("[data-bf-product-compare-at-price]");
-            if (compareAtEl && variant.compareAtPrice && variant.compareAtPrice.amount) {
-                compareAtEl.textContent = MoneyFormatter.format(
-                    variant.compareAtPrice.amount,
-                    variant.compareAtPrice.currencyCode,
-                    this.getMoneyFormat()
-                );
-                compareAtEl.style.display = "";
-            } else if (compareAtEl) {
-                compareAtEl.style.display = "none";
-            }
+            const compareAtEls = productEl.querySelectorAll("[data-bf-product-compare-at-price]");
+            compareAtEls.forEach((compareAtEl) => {
+                if (variant.compareAtPrice && variant.compareAtPrice.amount) {
+                    compareAtEl.textContent = MoneyFormatter.format(
+                        variant.compareAtPrice.amount,
+                        variant.compareAtPrice.currencyCode,
+                        this.getMoneyFormat()
+                    );
+                    compareAtEl.style.display = "";
+                } else if (compareAtEl) {
+                    compareAtEl.style.display = "none";
+                }
+            });
         });
     }
 
