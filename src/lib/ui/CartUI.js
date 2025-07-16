@@ -197,11 +197,11 @@ export class CartUI {
      */
     openCartDrawer(cartDrawer) {
         const drawer = cartDrawer ? cartDrawer : document.querySelector("[data-bf-cart-drawer]");
-        const activeClass = drawer.dataset.bfCartDrawerActiveClass ?? "bf-open";
         if (!drawer) {
             console.warn("[Blink] No cart drawer found to open.");
             return;
         }
+        const activeClass = drawer.dataset.bfCartDrawerActiveClass ?? "bf-open";
         if (drawer) {
             drawer.classList.add(activeClass);
             drawer.setAttribute("aria-hidden", "false");
