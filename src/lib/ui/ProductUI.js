@@ -143,7 +143,7 @@ export class ProductUI {
             if (!product) return;
 
             const optionName = container.getAttribute("data-bf-product-option-name");
-            if (optionName && optionName !== "{{ Connect Your Shopify Product Option Name }}") {
+            if (!!optionName && optionName !== "{{ Connect Your Shopify Product Option Name }}") {
                 this.renderProductOption(container, product, optionName, hasUrlVariant);
             } else {
                 container.style.display = "none"; // Hide if no valid option name
@@ -372,7 +372,7 @@ export class ProductUI {
         });
 
         // Update compare at price
-        const compareAtEls = productEl.querySelector("[data-bf-product-compare-at-price]");
+        const compareAtEls = productEl.querySelectorAll("[data-bf-product-compare-at-price]");
         compareAtEls.forEach((compareAtEl) => {
             if (compareAtEl && variant.compareAtPrice?.amount) {
                 compareAtEl.textContent = MoneyFormatter.format(
@@ -392,7 +392,7 @@ export class ProductUI {
         }
 
         // Update add to cart button
-        const addToCartBtns = productEl.querySelector("[data-bf-add-to-cart]");
+        const addToCartBtns = productEl.querySelectorAll("[data-bf-add-to-cart]");
         addToCartBtns.forEach((addToCartBtn) => {
             if (addToCartBtn) {
                 if (variant.availableForSale) {
@@ -468,6 +468,11 @@ export class ProductUI {
 
         productEl.querySelectorAll("[data-bf-product-option]").forEach((optionContainer) => {
             const optionName = optionContainer.getAttribute("data-bf-product-option-name");
+
+            if (!optionName || optionName == "{{ Connect Your Shopify Product Option Name }}") {
+                optionContainer.style.display = "none"; // Hide if no valid option name
+                return;
+            }
 
             optionContainer.querySelectorAll("[data-bf-product-option-value]").forEach((valueEl) => {
                 const optionValue = valueEl.getAttribute("data-option-value");
