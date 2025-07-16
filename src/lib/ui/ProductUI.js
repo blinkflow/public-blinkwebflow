@@ -360,27 +360,31 @@ export class ProductUI {
         if (!variant) return;
 
         // Update price
-        const priceEl = productEl.querySelector("[data-bf-product-price]");
-        if (priceEl && variant.price) {
-            priceEl.textContent = MoneyFormatter.format(
-                variant.price.amount,
-                variant.price.currencyCode,
-                this.getMoneyFormat()
-            );
-        }
+        const priceEls = productEl.querySelectorAll("[data-bf-product-price]");
+        priceEls.forEach((priceEl) => {
+            if (priceEl && variant.price) {
+                priceEl.textContent = MoneyFormatter.format(
+                    variant.price.amount,
+                    variant.price.currencyCode,
+                    this.getMoneyFormat()
+                );
+            }
+        });
 
         // Update compare at price
-        const compareAtEl = productEl.querySelector("[data-bf-product-compare-at-price]");
-        if (compareAtEl && variant.compareAtPrice?.amount) {
-            compareAtEl.textContent = MoneyFormatter.format(
-                variant.compareAtPrice.amount,
-                variant.compareAtPrice.currencyCode,
-                this.getMoneyFormat()
-            );
-            compareAtEl.style.display = "";
-        } else if (compareAtEl) {
-            compareAtEl.style.display = "none";
-        }
+        const compareAtEls = productEl.querySelector("[data-bf-product-compare-at-price]");
+        compareAtEls.forEach((compareAtEl) => {
+            if (compareAtEl && variant.compareAtPrice?.amount) {
+                compareAtEl.textContent = MoneyFormatter.format(
+                    variant.compareAtPrice.amount,
+                    variant.compareAtPrice.currencyCode,
+                    this.getMoneyFormat()
+                );
+                compareAtEl.style.display = "";
+            } else if (compareAtEl) {
+                compareAtEl.style.display = "none";
+            }
+        });
 
         // Update variant image if available
         if (variant.image) {
@@ -388,16 +392,18 @@ export class ProductUI {
         }
 
         // Update add to cart button
-        const addToCartBtn = productEl.querySelector("[data-bf-add-to-cart]");
-        if (addToCartBtn) {
-            if (variant.availableForSale) {
-                addToCartBtn.disabled = false;
-                addToCartBtn.innerHTML = addToCartBtn.dataset.originalText || "Add to Cart";
-            } else {
-                addToCartBtn.disabled = true;
-                addToCartBtn.innerHTML = "Out of Stock";
+        const addToCartBtns = productEl.querySelector("[data-bf-add-to-cart]");
+        addToCartBtns.forEach((addToCartBtn) => {
+            if (addToCartBtn) {
+                if (variant.availableForSale) {
+                    addToCartBtn.disabled = false;
+                    addToCartBtn.innerHTML = addToCartBtn.dataset.originalText || "Add to Cart";
+                } else {
+                    addToCartBtn.disabled = true;
+                    addToCartBtn.innerHTML = "Out of Stock";
+                }
             }
-        }
+        });
     }
 
     /**

@@ -60,7 +60,9 @@ export class CartUI {
 
             if (!cartData || !cartData.lines || !cartData.lines.edges.length) {
                 template.style.display = "none";
-                cartItemsCountElem.style.display = "none";
+                if (cartItemsCountElem) {
+                    cartItemsCountElem.style.display = "none";
+                }
                 if (emptyMessage) emptyMessage.style.display = "";
                 return;
             }
@@ -177,6 +179,10 @@ export class CartUI {
      */
     closeCartDrawer(cartDrawer) {
         const drawer = cartDrawer ? cartDrawer : document.querySelector("[data-bf-cart-drawer]");
+        if (!drawer) {
+            console.warn("[Blink] No cart drawer found to close.");
+            return;
+        }
         const activeClass = drawer.dataset.bfCartDrawerActiveClass ?? "bf-open";
         if (drawer) {
             drawer.classList.remove(activeClass);
@@ -192,7 +198,10 @@ export class CartUI {
     openCartDrawer(cartDrawer) {
         const drawer = cartDrawer ? cartDrawer : document.querySelector("[data-bf-cart-drawer]");
         const activeClass = drawer.dataset.bfCartDrawerActiveClass ?? "bf-open";
-
+        if (!drawer) {
+            console.warn("[Blink] No cart drawer found to open.");
+            return;
+        }
         if (drawer) {
             drawer.classList.add(activeClass);
             drawer.setAttribute("aria-hidden", "false");
