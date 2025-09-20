@@ -45,24 +45,9 @@ export interface ProductOption {
 	optionValues: OptionValue[];
 }
 
-interface Metafield {
-	id: string;
-	namespace: string;
-	key: string;
-	value: string;
-	reference?: {
-		__typename: string;
-		alt?: string;
-		image?: { url: string };
-	};
-	type: string;
-	description?: string;
-}
-
 interface Collection {
 	id: string;
 	title: string;
-	metafields: Metafield[];
 	handle: string;
 	description: string;
 	descriptionHtml: string;
@@ -131,7 +116,6 @@ interface ProductVariant {
 	availableForSale: boolean;
 	currentlyNotInStock: boolean;
 	quantityAvailable: number;
-	metafields: Metafield[];
 	weight: number;
 	weightUnit: string;
 	sellingPlanAllocations: {

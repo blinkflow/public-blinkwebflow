@@ -103,21 +103,6 @@ export default class ProductManager {
                   node {
                     id
                     title
-                    metafields(identifiers: []) {
-                      id
-                      namespace
-                      key
-                      value
-                      reference {
-                        __typename
-                        ... on MediaImage {
-                          alt
-                          image { url }
-                        }
-                      }
-                      type
-                      description
-                    }
                     handle
                     description
                     descriptionHtml
@@ -146,21 +131,6 @@ export default class ProductManager {
                     currentlyNotInStock
                     quantityAvailable
                     product { id title vendor }
-                    metafields(identifiers: []) {
-                      id
-                      namespace
-                      key
-                      value
-                      reference {
-                        __typename
-                        ... on MediaImage {
-                          alt
-                          image { url }
-                        }
-                      }
-                      type
-                      description
-                    }
                     weight
                     weightUnit
                     sellingPlanAllocations(first: 10) {
