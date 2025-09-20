@@ -1,6 +1,7 @@
 import { Renderer } from '@/products/renderer-base';
 import { subscribeEvent } from '@/utils/events';
 import Product from '@/products/product';
+import { logger } from '@/utils/error';
 
 const SPINNER_SVG = `
 <svg class="bf-loader-svg" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -57,6 +58,7 @@ export default class AddToCartRenderer extends Renderer {
 					this.render();
 				}, 2000);
 			} catch (e) {
+				logger.error('Failed to add product to cart', e);
 				this.container.textContent = 'Error. Try Again';
 			}
 			this.container.removeAttribute('disabled');

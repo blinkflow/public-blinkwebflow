@@ -1,4 +1,5 @@
 import { ShopifyClient } from '@/utils/shopify-client';
+import { formatCurrency } from '@/utils/currency';
 import { publishEvent } from '@/utils/events';
 import { logger } from '@/utils/error';
 import { Cache } from '@/utils/cache';
@@ -185,9 +186,10 @@ export default class Cart {
 		private shopifyClient: ShopifyClient,
 		private cacheKey: string,
 		private cacheTTL: number,
+		private moneyFormat: string,
 	) {}
 
-	async init() {
+	init() {
 		publishEvent('cart:init:started', { cacheKey: this.cacheKey });
 		const cachedCart = Cache.get<CartData>(this.cacheKey);
 		if (cachedCart) {
@@ -209,12 +211,25 @@ export default class Cart {
 		return this.cart?.totalQuantity || 0;
 	}
 
-	get subtotal(): string {
-		return this.cart?.estimatedCost?.subtotalAmount?.amount || '0';
+	get subtotal(): number {
+		return parseFloat(this.cart?.estimatedCost?.subtotalAmount?.amount || '0');
 	}
 
-	get total(): string {
-		return this.cart?.estimatedCost?.totalAmount?.amount || '0';
+	get total(): number {
+		return parseFloat(this.cart?.estimatedCost?.totalAmount?.amount || '0');
+	}
+
+	get subtotalFormatted(): string {
+		const amount = this.cart?.estimatedCost?.subtotalAmount?.amount || 0;
+		const currency = this.cart?.estimatedCost?.subtotalAmount?.currencyCode || 'USD';
+		return formatCurrency(amount, currency, this.moneyFormat);
+	}
+
+	get totalFormatted(): string {
+		const amount = this.cart?.estimatedCost?.totalAmount?.amount || 0;
+		const currency = this.cart?.estimatedCost?.totalAmount?.currencyCode || 'USD';
+
+		return formatCurrency(amount, currency, this.moneyFormat);
 	}
 
 	getLineItem(lineId: string): CartLine | null {
@@ -359,6 +374,7 @@ export default class Cart {
 		try {
 			if (!this.cart) {
 				this.cart = await this.create(variantId, quantity);
+				await this.refresh();
 			} else {
 				await this.addToExisting(variantId, quantity);
 				await this.refresh();
@@ -397,5 +413,9 @@ export default class Cart {
 			publishEvent('cart:updateQuantity:error', { lineId, quantity, error });
 			throw error;
 		}
+	}
+
+	public get cartData(): CartData | null {
+		return this.cart || null;
 	}
 }

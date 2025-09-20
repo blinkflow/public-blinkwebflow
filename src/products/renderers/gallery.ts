@@ -43,7 +43,7 @@ export default class GalleryRenderer extends Renderer {
 	private getThumbnailsWrapper(): HTMLElement | null {
 		const wrapper = this.container.querySelector('[data-bf-thumbnail-wrapper]');
 		if (!wrapper) {
-			logger.error('Thumbnails wrapper element not found');
+			logger.info('Thumbnails wrapper element not found');
 			return null;
 		}
 		return wrapper as HTMLElement;
@@ -71,6 +71,7 @@ export default class GalleryRenderer extends Renderer {
 
 		const temp = this.thumbnailsWrapper.querySelector('[data-bf-thumbnail-image]') as HTMLElement | null;
 		if (!temp) {
+			logger.info('No thumbnail template found. Thumbnails will not be rendered.');
 			return null;
 		}
 
@@ -106,6 +107,7 @@ export default class GalleryRenderer extends Renderer {
 		this.container.style.display = '';
 		this.renderSlider(images);
 		this.renderThumbnails(images);
+		this.handleVariantChange();
 		this.setupNavigationButtons(images.length);
 	}
 
@@ -172,7 +174,7 @@ export default class GalleryRenderer extends Renderer {
 			return;
 		}
 
-		this.thumbnailsWrapper.querySelectorAll('[data-bf-thumbnail-image]').forEach((el) => {
+		this.thumbnailsWrapper.querySelectorAll('[data-bf-thumbnail-image],[role="listitem"]').forEach((el) => {
 			el.remove();
 		});
 		this.thumbnails = images.map((thumb, index) => {

@@ -46,7 +46,7 @@ export default class ProductOptionsRenderer extends Renderer {
 	private createTemplateElement(container: HTMLElement): HTMLElement | null {
 		const firstValue = container.querySelector('[data-bf-product-option-value]');
 		if (!firstValue) {
-			logger.error(
+			logger.warn(
 				'No option value template found. Please add an element with the attribute "data-bf-product-option-value" inside the option container.',
 			);
 			return null;
@@ -119,7 +119,7 @@ export default class ProductOptionsRenderer extends Renderer {
 		const option = this.product.details.options.find((opt) => opt.name.toLowerCase() === this.optionName.toLowerCase());
 
 		if (!option) {
-			logger.error(`Option with name "${this.optionName}" not found in product options.`);
+			logger.warn(`Option with name "${this.optionName}" not found in product options.`);
 			return null;
 		}
 
