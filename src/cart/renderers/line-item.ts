@@ -73,7 +73,7 @@ export default class LineItemRenderer extends Renderer {
 				if (titleEl) titleEl.textContent = line.merchandise.product.title;
 
 				const optionEl = itemEl.querySelector('[data-bf-line-selected-option]');
-				if (optionEl) optionEl.textContent = line.merchandise.title;
+				if (optionEl && line.merchandise.title != 'Default Title') optionEl.textContent = line.merchandise.title;
 
 				const removeBtn = itemEl.querySelector('[data-bf-remove-line-item]') as HTMLButtonElement;
 				if (removeBtn) {

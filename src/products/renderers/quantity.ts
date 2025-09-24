@@ -5,5 +5,7 @@ export default class QuantityRenderer extends Renderer {
 	constructor(product: Product, container: HTMLElement) {
 		super(product, container);
 	}
-	render(): void {}
+	render(): void {
+		
+	}
 }
